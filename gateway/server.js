@@ -36,20 +36,29 @@ function shortText(text, limit = 100) {
   return result;
 }
 class NoteStore {
-  constructor(vault, state) {
+  constructor(vault, state, folder = 'Pebble') {
     this.vault = fs.realpathSync(vault);
     if (!fs.statSync(this.vault).isDirectory()) throw new Fault(400, 'Choose a vault folder.');
-    this.folder = path.join(this.vault, 'Pebble');
-    if (!fs.existsSync(this.folder)) fs.mkdirSync(this.folder, {mode: 0o700});
+    if(typeof folder!=='string'||path.isAbsolute(folder)||folder.split('/').some(p=>!p||p==='..'||p.startsWith('.')))throw new Fault(400,'Choose a notes folder inside the vault.');
+    this.folderName=folder;
+    this.folder=path.join(this.vault,folder);
+    let current=this.vault;
+    for(const part of folder.split('/')){
+      current=path.join(current,part);
+      if(!fs.existsSync(current))fs.mkdirSync(current,{mode:0o700});
+      const info=fs.lstatSync(current);
+      if(!info.isDirectory()||info.isSymbolicLink()||fs.realpathSync(current)!==current)throw new Fault(409,'The notes folder must be a regular folder inside the vault.');
+    }
     this.checkFolder();
-    this.vaultId = hash(this.vault);
+    // Preserve existing Pebble pairing; other destinations have their own queue scope.
+    this.vaultId=folder==='Pebble'?hash(this.vault):hash(this.vault+'\0'+folder);
     this.receipts = path.join(state, 'receipts', this.vaultId);
     fs.mkdirSync(this.receipts, {recursive: true, mode: 0o700});
   }
   checkFolder() {
     const info = fs.lstatSync(this.folder);
     if (!info.isDirectory() || info.isSymbolicLink() || fs.realpathSync(this.folder) !== this.folder)
-      throw new Fault(409, 'Pebble must be a regular folder inside the selected vault.');
+      throw new Fault(409, 'The notes folder must be a regular folder inside the selected vault.');
   }
   entries() {
     this.checkFolder();
@@ -82,7 +91,7 @@ class NoteStore {
   }
   mutationReceipt(requestId, vaultId, operation, id, text='') {
     this.checkFolder();
-    if(vaultId!==this.vaultId)throw new Fault(409,'The selected vault changed. Restore the original pairing.');
+    if(vaultId!==this.vaultId)throw new Fault(409,'The selected notes folder or vault changed. Restore the original pairing.');
     if(typeof requestId!=='string'||!/^[a-zA-Z0-9_-]{8,100}$/.test(requestId)||!/^[a-f0-9]{64}$/.test(id))throw new Fault(400,'Invalid note operation.');
     const file=path.join(this.receipts,hash(requestId)+'.json'),digest=hash(operation+id+text);
     const receipt=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):null;
@@ -135,7 +144,7 @@ class NoteStore {
   }
   create({requestId, text, vaultId}) {
     this.checkFolder();
-    if (vaultId !== this.vaultId) throw new Fault(409, 'The selected vault changed. Your pending note has been kept on the phone.');
+    if (vaultId !== this.vaultId) throw new Fault(409, 'The selected notes folder or vault changed. Your pending note has been kept on the phone.');
     if (typeof requestId !== 'string' || !/^[a-zA-Z0-9_-]{8,100}$/.test(requestId)) throw new Fault(400, 'Invalid delivery ID.');
     if (typeof text !== 'string' || !text.trim() || Buffer.byteLength(text) > 4096 || text.includes('\0')) throw new Fault(400, 'Dictate a note of up to 4096 bytes.');
     const digest = hash(text), receiptFile = path.join(this.receipts, hash(requestId)+'.json');
@@ -177,9 +186,9 @@ class NoteStore {
     return {saved:true, id:hash(receipt.filename), title:receipt.title, duplicate:false};
   }
 }
-function makeServer({vault, state, token}) {
+function makeServer({vault, state, token, folder}) {
   if (typeof token !== 'string' || token.length < 32) throw new Error('A private access token is required.');
-  const store = new NoteStore(vault, state), pairing = new Map();
+  const store = new NoteStore(vault, state, folder), pairing = new Map();
   let lastPhoneContact = null;
   const same = input => {const a=Buffer.from(input||''), b=Buffer.from('Bearer '+token);return a.length===b.length && crypto.timingSafeEqual(a,b);};
   const send = (res,status,value,type='application/json') => {
@@ -207,7 +216,7 @@ function makeServer({vault, state, token}) {
       }
       if (req.headers['x-stonenotes-client']==='phone') lastPhoneContact=new Date().toISOString();
       if (req.method==='GET' && url.pathname==='/v1/health') {
-        store.checkFolder(); return send(res,200,{service:'StoneNotes',vaultId:store.vaultId,folder:'Pebble',lastPhoneContact});
+        store.checkFolder(); return send(res,200,{service:'StoneNotes',vaultId:store.vaultId,folder:store.folderName,lastPhoneContact});
       }
       if (req.method==='POST' && url.pathname==='/v1/pairing') {
         let origin;

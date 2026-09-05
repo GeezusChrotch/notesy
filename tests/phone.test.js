@@ -29,7 +29,7 @@ test('settings shows connection progress, success and errors with browser window
  let browserStatus='';Object.defineProperty(context,'status',{get:()=>browserStatus,set:v=>{browserStatus=String(v);},configurable:true});
  vm.runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  elements.pair.value=JSON.stringify(config);elements.test.onclick();assert.equal(elements.status.textContent,'Connecting…');
- request.status=200;request.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId});request.onload();assert.equal(elements.status.textContent,'Connected to your Pebble notes folder.');
+ request.status=200;request.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId});request.onload();assert.equal(elements.status.textContent,'Connected to your notes folder.');
  elements['appearance-preset'].value='2';elements['appearance-preset'].onchange();
  elements.save.onclick();assert.match(context.location.href,/^pebblejs:\/\/close#/);
  const saved=JSON.parse(decodeURIComponent(context.location.href.split('#')[1]));assert.equal(saved.appearance.background,'#000055');assert.equal(saved.appearance.font,'roboto-condensed');assert.equal(saved.gatewayToken,config.gatewayToken);

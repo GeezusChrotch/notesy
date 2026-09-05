@@ -105,3 +105,15 @@ test('delete moves notes to recoverable trash, retries never delete a replacemen
  fs.renameSync(trash,path.join(f.root,'trash'));fs.symlinkSync(path.join(f.root,'trash'),trash);
  assert.throws(()=>s.remove(id,{...data,requestId:'delete_trial_other'}),/trash folder/);
 });
+test('custom existing and nested folders preserve notes and isolate queued deliveries',t=>{
+ const f=fixture(t),original=new NoteStore(f.vault,f.state);
+ fs.mkdirSync(path.join(f.vault,'Notes'));fs.mkdirSync(path.join(f.vault,'Notes','Voice'));
+ const file=path.join(f.vault,'Notes','Voice','Existing.md');fs.writeFileSync(file,'Written in Obsidian');
+ const s=new NoteStore(f.vault,f.state,'Notes/Voice');assert.equal(s.list().notes[0].title,'Existing');assert.notEqual(s.vaultId,original.vaultId);
+ assert.throws(()=>s.create({requestId:'old_folder_1234',text:'Pending text',vaultId:original.vaultId}),/vault changed/);
+ assert.equal(fs.readFileSync(file,'utf8'),'Written in Obsidian');
+ const created=new NoteStore(f.vault,f.state,'My Dictated Notes');assert.ok(fs.statSync(created.folder).isDirectory());
+ assert.equal(new NoteStore(f.vault,f.state).vaultId,original.vaultId);
+ for(const name of ['../outside','/outside','.obsidian','Notes/../Escape','Notes//Other'])assert.throws(()=>new NoteStore(f.vault,f.state,name),/inside the vault/);
+ fs.symlinkSync(f.root,path.join(f.vault,'Alias'));assert.throws(()=>new NoteStore(f.vault,f.state,'Alias/Outside'),/regular folder/);
+});

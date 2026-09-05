@@ -1,7 +1,6 @@
 # StoneNotes privacy
 
-StoneNotes creates and reads Markdown files only in the selected vault's immediate `Pebble`
-folder. It appends to the open note when requested and moves a note into `Pebble/.trash` after deletion confirmation. It does not index the rest of the vault or collect
+StoneNotes creates and reads Markdown files only in the selected notes folder inside the vault (`Pebble` by default). It appends to the open note when requested and moves a note into the selected folder’s `.trash` after deletion confirmation. It does not index the rest of the vault or collect
 analytics or send note contents to Organik Apps.
 
 Pebble dictation transmits audio through the paired phone's dictation service for transcription.
