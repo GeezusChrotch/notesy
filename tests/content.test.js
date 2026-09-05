@@ -34,6 +34,18 @@ test('local image conversion, hidden attachments and both Excalidraw formats pro
  assert.throws(()=>media.resolve(f.b,'Images.md','https://example.com/image.png'),/Only images/);fs.symlinkSync('/tmp',path.join(f.vault,'Outside'));assert.throws(()=>media.resolve(f.b,'Images.md','Outside/private.png'));
  await assert.rejects(media.render(f.b,id,0,'a'.repeat(64),120,100),/changed/);
 });
+test('ordinary Markdown Excalidraw names and mostly white previews render without truncation',async t=>{
+ const f=fixture(t),media=require('../gateway/media'),{isDrawing}=require('../gateway/content');
+ const scene={type:'excalidraw',version:2,elements:[{id:'white',type:'rectangle',x:0,y:0,width:176,height:150,strokeColor:'#ffffff',backgroundColor:'#ffffff',fillStyle:'solid',strokeWidth:1,roughness:0,opacity:100,seed:1,version:1,isDeleted:false,groupIds:[]}],appState:{viewBackgroundColor:'#ffffff'},files:{}};
+ const md='---\nexcalidraw-plugin: parsed\n---\n# Drawing\n```compressed-json\n'+require('../renderer/dist/lz-string').compressToBase64(JSON.stringify(scene))+'\n```';
+ assert.ok(isDrawing('Draw Test.md',Buffer.from(md)));assert.ok(isDrawing('Draw Test.md',Buffer.from('\ufeff'+md.replaceAll('\n','\r\n'))));
+ assert.equal(isDrawing('Ordinary.md',Buffer.from('A mention of excalidraw-plugin: parsed')),false);
+ const id=f.add('Draw Test.md',md),v=f.b.content(id);assert.ok(v.rich);assert.equal(v.blocks[0].kind,'image');
+ const image=await media.render(f.b,id,0,v.revision,176,150);assert.ok(image.width>0&&image.height>0);
+ assert.throws(()=>f.b.append(id,{vaultId:f.b.vaultId,requestId:'drawing_append_123',text:'Do not change'}),/alongside/);
+ assert.equal(fs.readFileSync(path.join(f.vault,'Draw Test.md'),'utf8'),md);
+ const embed=f.add('Embedded.md','![[Draw Test.md]]');assert.deepEqual(await media.render(f.b,embed,0,f.b.content(embed).revision,176,150),image);
+});
 test('rich content, hidden folders, task editing and media endpoints require pairing and vault identity',async t=>{
  const f=fixture(t),id=f.add('Tasks.md','- [ ] A task');f.b.flush();const {server}=makeServer(f.options);await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));const base='http://127.0.0.1:'+server.address().port,headers={Authorization:'Bearer '+f.options.token,'Content-Type':'application/json'};
  for(const route of ['/v3/folders','/v3/notes/'+id,'/v3/notes/'+id+'/image'])assert.equal((await fetch(base+route)).status,401);

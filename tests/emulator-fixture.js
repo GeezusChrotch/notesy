@@ -11,6 +11,11 @@ if(process.env.WATCH_TEST_RICH_ONLY){
  fs.writeFileSync(path.join(vault,'Assets','Drawing.excalidraw'),JSON.stringify(scene));
  fs.writeFileSync(path.join(vault,'Projects','Project plan.md'),'Text from Obsidian.\n\n- [ ] Buy coffee beans\n- [x] Already done\n\n![[Assets/Colors.svg]]\n![[Assets/Drawing.excalidraw]]\n'+Array.from({length:32},(_,i)=>'- [ ] More task '+i).join('\n'));
 }
+if(process.env.WATCH_TEST_SCROLL_ONLY){
+ fs.mkdirSync(path.join(vault,'Assets'));
+ for(const [name,width,height] of [['Wide',400,80],['Tall',80,400]])fs.writeFileSync(path.join(vault,'Assets',name+'.svg'),`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="red"/></svg>`);
+ fs.writeFileSync(path.join(vault,'Projects','Project plan.md'),'START This long paragraph must be readable from beginning to end, even with the largest font. Scroll through every line before advancing to the checkbox. Nothing after the pictures should disappear. END\n\n- [ ] After paragraph\n![[Assets/Wide.svg]]\n![[Assets/Tall.svg]]\n- [ ] After pictures');
+}
 const {server,browser}=makeServer({vault,state:path.join(root,'state'),token:'fixture-token-'.repeat(4)});
 const projects=browser.list().items.find(n=>n.title==='Projects');const projectNote=browser.list(projects.id).items[0];browser.pin(projectNote.id,true);
 server.listen(0,'127.0.0.1',()=>process.stdout.write(JSON.stringify({port:server.address().port,vaultId:browser.vaultId,root:browser.root,projects:projects.id,note:projectNote.id})+'\n'));

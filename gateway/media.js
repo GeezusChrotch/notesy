@@ -42,7 +42,7 @@ async function render(browser,id,index,revision,width,height){
  const parsed=browser.content(id,Math.floor(index/15)),block=parsed.blocks[index%15];if(!block||block.kind!=='image')throw error('This image is no longer in the note.',404);
  const file=resolve(browser,raw.entry.relative,block.ref),ext=path.extname(file).toLowerCase();
  if(!/\.(?:png|jpe?g|webp|gif|heic|tiff?|bmp|svg|excalidraw|md)$/i.test(file))throw error('This embedded file is not a supported picture or drawing.');
- let data=read(file),kind=/\.excalidraw(?:\.md)?$/i.test(file)?'drawing':ext==='.svg'?'svg':'image';if(kind==='drawing')data=drawing(browser,file,data);
+ let data=read(file),kind=require('./content').isDrawing(file,data)?'drawing':ext==='.svg'?'svg':'image';if(kind==='drawing')data=drawing(browser,file,data);
  const key=crypto.createHash('sha256').update(data).update(width+':'+height+':'+kind).digest('hex');if(cache.has(key))return cache.get(key);
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'notesy-image-')),input=path.join(temp,'input');fs.writeFileSync(input,data,{mode:0o600});
  try{
@@ -50,7 +50,7 @@ async function render(browser,id,index,revision,width,height){
   // enclosing macOS app can stall before main. Copying preserves its code signature.
   const executable=path.join(temp,'notesy-image-helper');
   fs.copyFileSync(path.join(assets,'notesy-image-helper'),executable);fs.chmodSync(executable,0o700);
-  const result=await new Promise((resolve,reject)=>execFile(executable,[input,String(width),String(height),kind,assets],{timeout:14000,maxBuffer:250000},(err,stdout)=>{if(err)reject(error('This image could not be converted. Check its format or size.',422));else{try{resolve(JSON.parse(stdout));}catch{reject(error('Image conversion failed.',422));}}}));
+  const result=await new Promise((resolve,reject)=>execFile(executable,[input,String(width),String(height),kind,assets],{timeout:14000,maxBuffer:384*1024},(err,stdout)=>{if(err)reject(error('This image could not be converted. Check its format or size.',422));else{try{resolve(JSON.parse(stdout));}catch{reject(error('Image conversion failed.',422));}}}));
   const rgba=Buffer.from(result.rgba,'base64'),pixels=[];if(rgba.length!==result.width*result.height*4||result.width>width||result.height>height)throw error('Invalid converted image.',422);
   for(let i=0;i<rgba.length;i+=4)pixels.push(0xc0|(Math.round(rgba[i]/85)<<4)|(Math.round(rgba[i+1]/85)<<2)|Math.round(rgba[i+2]/85));
   const runs=[];for(let i=0;i<pixels.length;){let n=1;while(n<255&&i+n<pixels.length&&pixels[i+n]===pixels[i])n++;runs.push(n,pixels[i]);i+=n;}

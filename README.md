@@ -58,7 +58,9 @@ expand subfolders as needed, then Apply hidden folders. Hidden choices apply to 
 and search, including descendants; reopen Notesy or refresh its list afterward. Files are not
 moved. Pictures in hidden attachment folders can still appear in visible notes.
 
-Notes with Markdown tasks or embedded pictures open as a content menu. Select a checkbox to
+Notes with Markdown tasks or embedded pictures open as a content menu. Long paragraphs scroll
+within their row before Up/Down moves to the next item; photo rows keep their position as images
+load. Select a checkbox to
 check or uncheck it in Obsidian; only the marker changes. Normal text, line endings and metadata
 are preserved. If Obsidian edited the note since it loaded, reopen before changing a task.
 Custom note-button assignments still apply; keep Select as Normal navigation to toggle tasks.
@@ -70,7 +72,8 @@ JPEG, GIF (first frame), WebP, HEIC, TIFF, BMP and SVG files are converted by ma
 so small text in large images may be difficult to read. Wikilinks, Markdown image links and
 short unique attachment names work. Remote web images and non-image embeds are not downloaded.
 
-Native `.excalidraw` files and Obsidian `.excalidraw.md` drawings, including compressed JSON,
+Native `.excalidraw` files and Obsidian drawings (including ordinary `.md` filenames marked
+with `excalidraw-plugin` in frontmatter and compressed JSON)
 render locally using Excalidraw's export library. Drawings and their embedded raster images stay
 on your Mac. Source drawings are never rewritten; use New note alongside a drawing for dictation.
 

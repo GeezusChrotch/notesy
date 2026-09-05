@@ -129,7 +129,7 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     try{const stat=fs.fstatSync(fd);if(!stat.isFile()||stat.size>1024*1024)throw new Fault(413,'This note exceeds the 1 MB watch limit.');const data=fs.readFileSync(fd);if(data.length>1024*1024)throw new Fault(413,'This note exceeds the watch limit.');return {entry,file,data};}finally{fs.closeSync(fd);}
   }
   content(id,page=0){
-    const {entry,data}=this.raw(id),drawing=/\.excalidraw(?:\.md)?$/i.test(entry.relative),parsed=drawing?{revision:hash(data),rich:true,blocks:[]}:require('./content').parse(data.toString('utf8'),plainText,pages);
+    const {entry,data}=this.raw(id),drawing=require('./content').isDrawing(entry.relative,data),parsed=drawing?{revision:hash(data),rich:true,blocks:[]}:require('./content').parse(data.toString('utf8'),plainText,pages);
     if(drawing){parsed.rich=true;parsed.blocks=[{kind:'image',ref:path.posix.basename(entry.relative),text:'Drawing'}];}
     if(!parsed.rich)return {...this.read(id,page),rich:false};
     const parent=path.posix.dirname(entry.relative),blocks=parsed.blocks.map((b,i)=>({...b,id:b.kind==='task'?b.id:String(i),text:shortText(b.text,220)}));
@@ -174,7 +174,7 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     const receipt=JSON.parse(fs.readFileSync(path.join(store.receipts,hash(body.requestId)+'.json'),'utf8'));
     result.id=this.remember(e.relative?e.relative+'/'+receipt.filename:receipt.filename,false);this.flush();return result;
   }
-  append(id,body){if(/\.excalidraw(?:\.md)?$/i.test(this.index.entries[id]?.relative||''))throw new Fault(400,'Create a new note alongside this drawing for dictation.');this.bind(body,'append',id);const e=this.index.entries[id];if(!e||e.folder)throw new Fault(400,'Append is available for notes only.');const parent=path.posix.dirname(e.relative),store=this.store(parent==='.'?'':parent);return {...store.append(hash(path.basename(e.relative)),{...body,vaultId:store.vaultId}),id};}
+  append(id,body){const raw=this.raw(id);if(require('./content').isDrawing(raw.entry.relative,raw.data))throw new Fault(400,'Create a new note alongside this drawing for dictation.');this.bind(body,'append',id);const e=this.index.entries[id];if(!e||e.folder)throw new Fault(400,'Append is available for notes only.');const parent=path.posix.dirname(e.relative),store=this.store(parent==='.'?'':parent);return {...store.append(hash(path.basename(e.relative)),{...body,vaultId:store.vaultId}),id};}
   remove(id,body){
     this.bind(body,'delete',id);
     // Resolve the stored path without requiring the already deleted note to exist.

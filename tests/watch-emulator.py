@@ -95,6 +95,26 @@ def rich_checks():
  double_back();shot('rich-actions.png');click('back');click('back');assert calls[-1][0]==1
  print('PASS: mixed note text, task check/uncheck, inline color image and Excalidraw, rich paging in both directions, Actions and Back',flush=True)
 
+def scroll_checks():
+ settings();send({1:6,27:0,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,buttons)),15:5,16:30});settle()
+ click('down');click('select');shot('rich-scroll-start.png')
+ click('down');shot('rich-scroll-middle.png')
+ pixels=[value for row in Screenshot(pebble).grab_image() for value in row][:200*180*3]
+ assert sum(v<64 for v in pixels)>300 and sum(v>192 for v in pixels)>300,'Scrolling text produced a blank screen'
+ click('select')
+ assert not any(m[0]==8 for m in calls),'Down skipped the rest of the oversized paragraph'
+ shot('rich-scroll-actions.png');click('back')
+ for _ in range(10):
+  click('down')
+  if calls[-1][0]==9:break
+ assert calls[-1][0]==9 and calls[-1][8]==2;shot('rich-scroll-wide.png')
+ click('down');assert calls[-1][0]==9 and calls[-1][8]==3;shot('rich-scroll-tall.png')
+ click('down');shot('rich-scroll-after.png');click('select');assert calls[-1][0]==8
+ assert http('/v3/notes/'+info['note'])['blocks'][4]['checked'],'The row after the pictures was skipped'
+ click('up');click('up');assert calls[-1][0]==9 and calls[-1][8]==2
+ click('up');click('up');shot('rich-scroll-bottom.png');click('up');shot('rich-scroll-backward.png')
+ print('PASS: oversized text scrolls before selection moves; wide and tall images keep geometry; task after pictures toggles; reverse scrolling works',flush=True)
+
 def marquee_checks():
  def frame():return tuple(tuple(row) for row in Screenshot(pebble).grab_image())
  def rows(speed):
@@ -167,7 +187,8 @@ def voice_checks():
  print('PASS: configured Append in browser targets the selected note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_RICH_ONLY'):rich_checks()
+ if os.environ.get('WATCH_TEST_SCROLL_ONLY'):scroll_checks()
+ elif os.environ.get('WATCH_TEST_RICH_ONLY'):rich_checks()
  elif os.environ.get('WATCH_TEST_MARQUEE_ONLY'):marquee_checks()
  elif os.environ.get('WATCH_TEST_DICTATION_ONLY') or os.environ.get('WATCH_TEST_SEARCH_ONLY'):voice_checks()
  else:

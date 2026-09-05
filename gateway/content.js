@@ -22,4 +22,11 @@ function parse(markdown,plainText,pages){
  }
  flush();return {revision:hash(Buffer.from(markdown)),blocks,rich:blocks.some(b=>b.kind!=='text')};
 }
-module.exports={parse,hash};
+// Excalidraw's plugin also creates ordinary .md filenames with a frontmatter marker.
+function isDrawing(file,data){
+ if(/\.excalidraw(?:\.md)?$/i.test(file))return true;
+ if(!/\.md$/i.test(file))return false;
+ const front=data.toString('utf8').match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+ return !!front&&/^excalidraw-plugin:\s*['"]?(?:parsed|raw)['"]?\s*$/m.test(front[1]);
+}
+module.exports={parse,hash,isDrawing};
