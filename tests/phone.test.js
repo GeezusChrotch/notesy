@@ -61,3 +61,10 @@ test('phone learns browser identity from existing pairing and sends all twelve b
  p.handlers.appmessage({payload:{COMMAND:3,API:2,NOTE_ID:'v2_phone_draft',TEXT:'Here',FOLDER_ID:'d'.repeat(64),VAULT_ID:'b'.repeat(64)}});
  assert.match(p.requests[1].url,/v2\/notes$/);assert.equal(JSON.parse(p.requests[1].body).folderId,'d'.repeat(64));
 });
+test('search is read-only, carries result locations and ignores superseded queries',()=>{
+ const p=phone(),c={...config,browserId:'b'.repeat(64),root:'c'.repeat(64),buttons:[8,0,0,0,0,0,0,0,0,0,0,8]};p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify(c))});
+ const before=p.data['stonenotes.delivery'];for(const [seq,q] of [[41,'project plna'],[42,'café & plan']])p.handlers.appmessage({payload:{COMMAND:7,API:2,REQUEST:seq,TEXT:q,PAGE:0,SNAPSHOT:''}});
+ assert.match(p.requests[1].url,/v2\/search\?q=caf%C3%A9%20%26%20plan/);
+ for(const i of [1,0]){const req=p.requests[i];req.status=200;req.responseText=JSON.stringify({items:[{id:'d'.repeat(64),title:i?'Current':'Stale',location:'Projects/Work'}],offset:0,total:1,snapshot:'abc'});req.onload();}
+ assert.equal(p.messages.find(m=>m.TITLE==='Current').TEXT,'Projects/Work');assert.ok(!p.messages.some(m=>m.TITLE==='Stale'||m.TYPE===7||m.TYPE===8));assert.equal(p.data['stonenotes.delivery'],before);assert.equal(require('../src/pkjs/buttons').normalize(c.buttons)[11],8);
+});

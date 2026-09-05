@@ -56,7 +56,9 @@ test('immediate deletion is recoverable, unpins and never deletes a replacement 
 test('authenticated v2 HTTP coexists with old phone deliveries and does not require re-pairing',async t=>{
  const f=fixture(t);add(f,'Root.md');await new Promise(r=>f.server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>f.server.close(r)));
  const base='http://127.0.0.1:'+f.server.address().port,headers={Authorization:'Bearer '+f.options.token,'Content-Type':'application/json'};
- assert.equal((await fetch(base+'/v2/browse')).status,401);
+ assert.equal((await fetch(base+'/v2/browse')).status,401);assert.equal((await fetch(base+'/v2/search?q=root')).status,401);
+ const search=await(await fetch(base+'/v2/search?q=root',{headers})).json();assert.equal(search.items[0].title,'Root');assert.equal(search.items[0].location,'Vault');
+ assert.equal((await fetch(base+'/v2/search?q=',{headers})).status,400);
  const health=await(await fetch(base+'/v1/health',{headers})).json();assert.equal(health.browserId,f.browser.vaultId);
  const root=await(await fetch(base+'/v2/browse',{headers})).json();assert.equal(root.items[0].title,'Root');assert.equal(fs.existsSync(path.join(f.vault,'Pebble')),false);
  async function post(route,body){const r=await fetch(base+route,{headers,method:'POST',body:JSON.stringify(body)});assert.equal(r.status,200,await r.clone().text());return r.json();}
@@ -65,4 +67,21 @@ test('authenticated v2 HTTP coexists with old phone deliveries and does not requ
  await post('/v2/items/'+note.id+'/pin',{pinned:true,vaultId:health.browserId});await post('/v2/items/'+note.id+'/append',{requestId:'http_append_v2',text:'Append',vaultId:health.browserId});
  assert.match((await(await fetch(base+'/v2/notes/'+note.id,{headers})).json()).text,/Append/);
  await post('/v2/items/'+note.id+'/delete',{requestId:'http_delete_v2',vaultId:health.browserId});
+});
+test('dictated fuzzy search ranks titles, finds unvisited folders and body text, and stays read-only',async t=>{
+ const f=fixture(t);add(f,'Project plan.md','Original');add(f,'Deep/Work/Project plan.md');add(f,'Other.md','Discuss the project plan tomorrow');add(f,'Café.md');add(f,'.obsidian/Project plan secret.md');fs.symlinkSync(path.join(f.vault,'Project plan.md'),path.join(f.vault,'Project plan link.md'));
+ const results=await f.browser.search('project plna');assert.equal(results.items[0].title,'Project plan');assert.equal(results.items.length,2);assert.ok(results.items.some(n=>n.location==='Deep/Work'));
+ assert.equal(f.browser.read(results.items.find(n=>n.location==='Deep/Work').id,0).text,'External note');assert.equal((await f.browser.search('cafe')).items[0].title,'Café');
+ const literal=await f.browser.search('project plan');assert.equal(literal.items.at(-1).title,'Other');assert.equal(fs.readFileSync(path.join(f.vault,'Project plan.md'),'utf8'),'Original');
+ assert.equal((await f.browser.search('xyzzy unmatched')).total,0);for(const q of ['',null,'!','x'.repeat(256)])await assert.rejects(f.browser.search(q),/search|Search/);
+});
+test('search snapshots keep ranked pages stable and reject another query or expiration',async t=>{
+ const f=fixture(t);for(let i=0;i<37;i++)add(f,'Folder/Meeting '+i+'.md');const a=await f.browser.search('meeting');add(f,'Meeting new.md');
+ const b=await f.browser.search('meeting',15,a.snapshot),c=await f.browser.search('meeting',30,a.snapshot);assert.equal(new Set([...a.items,...b.items,...c.items].map(n=>n.id)).size,37);assert.equal((await f.browser.search('meeting')).total,38);
+ await assert.rejects(f.browser.search('other',15,a.snapshot),/expired/);f.browser.snapshots.get(a.snapshot).expires=0;await assert.rejects(f.browser.search('meeting',15,a.snapshot),/expired/);
+});
+
+test('search reports a result cap and title matches rank above approximate and body matches',async t=>{
+ const f=fixture(t);add(f,'Garden.md');add(f,'Gardens.md');add(f,'Other.md','Garden');for(let i=0;i<105;i++)add(f,'Garden details '+i+'.md');
+ const results=await f.browser.search('garden');assert.equal(results.total,100);assert.equal(results.limited,true);assert.equal(results.partial,false);assert.equal(results.items[0].title,'Garden');assert.match(results.title,/Top 100/);
 });

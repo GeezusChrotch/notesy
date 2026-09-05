@@ -1,7 +1,7 @@
 #include <pebble.h>
 #define MAX_NOTES 15
 #define DRAFT_SIZE 768
-typedef struct { char id[65]; char title[112]; bool folder,pinned; } Note;
+typedef struct { char id[65]; char title[112]; char location[96]; bool folder,pinned; } Note;
 static Window *s_main, *s_reader, *s_actions;
 static MenuLayer *s_action_menu;
 static bool s_scroll_to_end;
@@ -19,7 +19,9 @@ static int s_total,s_incoming_count,s_incoming_offset,s_incoming_total,s_restore
 static char s_incoming_snapshot[25];
 static uint8_t s_buttons[12]={0,0,0,4,5,1,0,0,0,4,2,6};
 typedef struct {char id[65],title[112],snapshot[25];int offset,row;} Location;
-static Location s_history[24];static int s_depth;
+static Location s_history[24],s_before_search;static int s_depth;
+static bool s_search,s_capture_search;static char s_query[256];
+static void start_search(void);
 static void perform(int action);
 static void refresh_list(void);
 static void main_clicks(void *context);
@@ -60,7 +62,8 @@ static void send_command(int command, const char *id, int page, const char *text
   dict_write_uint32(iter, MESSAGE_KEY_REQUEST, ++s_request);
   dict_write_int(iter, MESSAGE_KEY_PAGE, &page, sizeof(page), true);
   dict_write_uint8(iter,MESSAGE_KEY_API,command==3?s_draft_api:2);
-  if(command==1){dict_write_cstring(iter,MESSAGE_KEY_FOLDER_ID,s_folder);dict_write_cstring(iter,MESSAGE_KEY_SNAPSHOT,s_snapshot);}
+  if(command==1)dict_write_cstring(iter,MESSAGE_KEY_FOLDER_ID,s_folder);
+  if(command==1||command==7)dict_write_cstring(iter,MESSAGE_KEY_SNAPSHOT,s_snapshot);
   if(command==3&&s_draft_api==2){dict_write_cstring(iter,MESSAGE_KEY_FOLDER_ID,s_draft_folder);dict_write_cstring(iter,MESSAGE_KEY_VAULT_ID,s_draft_vault);}
   if(command==6)dict_write_uint8(iter,MESSAGE_KEY_PINNED,s_pin_value);
   if (id) dict_write_cstring(iter, MESSAGE_KEY_NOTE_ID, id);
@@ -72,7 +75,7 @@ static void send_command(int command, const char *id, int page, const char *text
 static void load_notes(int offset) {
   if (!s_ready||!s_browser) { set_status("Update the Mac connector, then reopen Notesy"); return; }
   s_loading = true;s_incoming_count=-1;
-  set_status("Loading folder…"); send_command(1, NULL, offset, NULL);
+  set_status(s_search?"Searching vault…":"Loading folder…"); send_command(s_search?7:1, NULL, offset, s_search?s_query:NULL);
 }
 #if defined(PBL_PLATFORM_EMERY)
 static void unload_custom_theme_font(void) {
@@ -185,8 +188,15 @@ static void retry_draft(void) {
   set_status("Sending draft to phone…"); send_command(3, s_draft_id, 0, s_draft);
 }
 static void dictation_done(DictationSession *session, DictationSessionStatus status, char *text, void *context) {
+  bool searching=s_capture_search;s_capture_search=false;
   if (status != DictationSessionStatusSuccess) { set_status("Dictation cancelled or unavailable"); return; }
   if (!text || !text[0]) { set_status("No speech detected"); return; }
+  if(searching){
+    if(strlen(text)>=sizeof(s_query)){set_status("Search too long · try fewer words");return;}
+    if(!s_search){Location *loc=&s_before_search;snprintf(loc->id,sizeof(loc->id),"%s",s_folder);snprintf(loc->title,sizeof(loc->title),"%s",s_folder_title);snprintf(loc->snapshot,sizeof(loc->snapshot),"%s",s_snapshot);loc->offset=s_offset;loc->row=menu_layer_get_selected_index(s_menu).row;}
+    if(s_body)window_stack_remove(s_reader,false);
+    s_search=true;snprintf(s_query,sizeof(s_query),"%s",text);s_snapshot[0]=0;s_count=0;s_total=0;s_offset=0;s_restore_row=1;load_notes(0);return;
+  }
   if (strlen(text) >= sizeof(s_draft)) { set_status("Note too long · try a shorter thought"); return; }
   snprintf(s_draft, sizeof(s_draft), "%s", text);
   snprintf(s_draft_target,sizeof(s_draft_target),"%s",s_capture_target);
@@ -198,7 +208,13 @@ static void dictation_done(DictationSession *session, DictationSessionStatus sta
   if (!persist_draft()) { set_status("Watch storage full · keep app open and retry"); return; }
   retry_draft();
 }
+static void start_search(void){
+  if(!s_ready||!s_browser){set_status("Open Pebble and reload the vault first");return;}
+  if(!s_dictation){set_status("Dictation requires a microphone and phone");return;}
+  s_capture_search=true;s_loading=false;++s_request;clear_timeout();dictation_session_start(s_dictation);
+}
 static void dictate_to(const char *target,const char *folder) {
+  s_capture_search=false;
   if (s_pending) { retry_draft(); return; }
   if (!s_ready||!s_browser||!s_vault[0]||!folder[0]) { set_status("Open Pebble and reload the vault first"); return; }
   if (s_dictation) {
@@ -222,10 +238,10 @@ static const char *note_title(const char *full, char *date, size_t size) {
 }
 static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *index, void *context) {
   int row=index->row; const char *title,*subtitle=NULL;
-  if(row==0){title=s_pending?"Retry draft":"New note";subtitle=s_status;}
+  if(row==0){title=s_search?"Search again":s_pending?"Retry draft":"New note";subtitle=s_status;}
   else if(row<=s_count){
-    static char date[40],label[80];Note *n=&s_notes[row-1];title=n->folder?n->title:note_title(n->title,date,sizeof(date));
-    snprintf(label,sizeof(label),"%s%s%s",n->pinned?"Pinned / ":"",n->folder?"Folder":(date[0]?date:"Note"),"");subtitle=label;
+    static char date[40],label[112];Note *n=&s_notes[row-1];title=n->folder?n->title:note_title(n->title,date,sizeof(date));
+    snprintf(label,sizeof(label),"%s%s%s",n->pinned?"Pinned / ":"",s_search?n->location:n->folder?"Folder":(date[0]?date:"Note"),"");subtitle=label;
   }else title="Loading…";
   GRect bounds=layer_get_bounds(cell);
   graphics_context_set_text_color(ctx,menu_cell_layer_is_highlighted(cell)?s_selection_text:s_foreground);
@@ -277,19 +293,24 @@ static void press(ClickRecognizerRef recognizer,void *context){
   int button=click_recognizer_get_button_id(recognizer)-BUTTON_ID_UP;
   if(button<0||button>2)return;
   int action=s_buttons[(s_body?6:0)+button];
-  if(action)perform(action);
+  if(action)perform(action==8?11:action);
   else if(button==1)perform(s_body?5:8);
   else if(s_body)scroll_note(button==2);else move_selection(button==2);
 }
 static void long_press(ClickRecognizerRef recognizer,void *context){
   int button=click_recognizer_get_button_id(recognizer)-BUTTON_ID_UP;
-  if(button>=0&&button<=2){int action=s_buttons[(s_body?9:3)+button];if(action)perform(action);else if(button==1)perform(s_body?5:8);else if(s_body)scroll_note(button==2);else move_selection(button==2);}
+  if(button>=0&&button<=2){int action=s_buttons[(s_body?9:3)+button];if(action)perform(action==8?11:action);else if(button==1)perform(s_body?5:8);else if(s_body)scroll_note(button==2);else move_selection(button==2);}
 }
 static void back_click(ClickRecognizerRef recognizer,void *context){
   if(s_body){window_stack_pop(true);if(!s_snapshot[0])refresh_list();return;}
+  if(s_search){
+    s_search=false;s_query[0]=0;Location *loc=&s_before_search;
+    memcpy(s_folder,loc->id,sizeof(s_folder));memcpy(s_folder_title,loc->title,sizeof(s_folder_title));memcpy(s_snapshot,loc->snapshot,sizeof(s_snapshot));s_restore_row=loc->row;
+    s_count=0;menu_layer_reload_data(s_menu);load_notes(loc->offset);return;
+  }
   if(!s_depth){window_stack_pop(true);return;}
   ++s_request;clear_timeout();s_loading=false;
-  Location *loc=&s_history[--s_depth];snprintf(s_folder,sizeof(s_folder),"%s",loc->id);snprintf(s_folder_title,sizeof(s_folder_title),"%s",loc->title);snprintf(s_snapshot,sizeof(s_snapshot),"%s",loc->snapshot);s_restore_row=loc->row;
+  Location *loc=&s_history[--s_depth];memcpy(s_folder,loc->id,sizeof(s_folder));memcpy(s_folder_title,loc->title,sizeof(s_folder_title));memcpy(s_snapshot,loc->snapshot,sizeof(s_snapshot));s_restore_row=loc->row;
   s_count=0;menu_layer_reload_data(s_menu);load_notes(loc->offset);
 }
 static void view_clicks(void){
@@ -302,11 +323,11 @@ static void view_clicks(void){
 static void main_clicks(void *context){view_clicks();}
 static void reader_clicks(void *context){view_clicks();}
 static Note *selected_note(void){int row=menu_layer_get_selected_index(s_menu).row;return row>0&&row<=s_count?&s_notes[row-1]:NULL;}
-static uint16_t action_rows(MenuLayer *menu,uint16_t section,void *context){return s_body?7:8;}
-static int action_code(int row){static const int browsing[]={8,1,2,4,3,7,9,10},reading[]={2,4,3,1,7,9,10};return s_body?reading[row]:browsing[row];}
+static uint16_t action_rows(MenuLayer *menu,uint16_t section,void *context){return s_body?8:9;}
+static int action_code(int row){static const int browsing[]={8,1,11,2,4,3,7,9,10},reading[]={2,11,4,3,1,7,9,10};return s_body?reading[row]:browsing[row];}
 static void action_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *context){
   int action=action_code(index->row);Note *n=selected_note();bool pinned=s_body?s_note_pinned:(n&&n->pinned);
-  const char *title=action==8?"Open selected":action==1?"New note":action==2?"Append dictation":action==4?(pinned?"Unpin":"Pin to main page"):action==3?"Delete note":action==7?"Refresh":action==9?"Move up":"Move down";
+  const char *title=action==11?"Dictate to search":action==8?"Open selected":action==1?"New note":action==2?"Append dictation":action==4?(pinned?"Unpin":"Pin to main page"):action==3?"Delete note":action==7?"Refresh":action==9?"Move up":"Move down";
   GRect bounds=layer_get_bounds(cell);graphics_context_set_text_color(ctx,menu_cell_layer_is_highlighted(cell)?s_selection_text:s_foreground);
   graphics_draw_text(ctx,title,theme_title_font(),GRect(6,4,bounds.size.w-12,bounds.size.h-4),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
 }
@@ -346,7 +367,7 @@ static void reader_load(Window *window) {
 }
 static void open_selected(void){
   if(s_loading)return;
-  Note *n=selected_note();if(!n){dictate();return;}
+  Note *n=selected_note();if(!n){if(s_search)start_search();else dictate();return;}
   if(n->folder){
     if(s_depth>=24){set_status("Folder depth limit reached");return;}
     Location *loc=&s_history[s_depth++];snprintf(loc->id,sizeof(loc->id),"%s",s_folder);snprintf(loc->title,sizeof(loc->title),"%s",s_folder_title);snprintf(loc->snapshot,sizeof(loc->snapshot),"%s",s_snapshot);loc->offset=s_offset;loc->row=menu_layer_get_selected_index(s_menu).row;
@@ -361,6 +382,7 @@ static void open_selected(void){
 }
 static void refresh_list(void){s_snapshot[0]=0;s_restore_row=0;load_notes(0);}
 static void perform(int action){
+  if(action==11){start_search();return;}
   if(action==5){open_actions(NULL,NULL);return;}
   if(action==6)return;
   if(action==7){s_loading=false;if(s_body){s_page=0;s_loading=true;send_command(2,s_current_id,0,NULL);}else refresh_list();return;}
@@ -387,9 +409,9 @@ static void inbox(DictionaryIterator *iter, void *context) {
   if(kind==6) {
     Tuple *api=dict_find(iter,MESSAGE_KEY_API),*vault=dict_find(iter,MESSAGE_KEY_VAULT_ID),*root=dict_find(iter,MESSAGE_KEY_FOLDER_ID),*buttons=dict_find(iter,MESSAGE_KEY_BUTTONS);
     s_browser=api&&api->value->int32==2;
-    if(vault){if(strcmp(s_vault,vault->value->cstring)!=0){s_folder[0]=0;s_snapshot[0]=0;s_depth=0;}snprintf(s_vault,sizeof(s_vault),"%s",vault->value->cstring);}
+    if(vault){if(strcmp(s_vault,vault->value->cstring)!=0){s_folder[0]=0;s_snapshot[0]=0;s_depth=0;s_search=false;s_query[0]=0;}snprintf(s_vault,sizeof(s_vault),"%s",vault->value->cstring);}
     if(root){bool changed=strcmp(s_root,root->value->cstring)!=0;snprintf(s_root,sizeof(s_root),"%s",root->value->cstring);if(changed||!s_folder[0]){snprintf(s_folder,sizeof(s_folder),"%s",s_root);s_depth=0;s_snapshot[0]=0;s_count=0;s_offset=0;}}
-    if(buttons){const char *value=buttons->value->cstring;for(int i=0;i<12&&*value;i++){if(*value>='0'&&*value<='7')s_buttons[i]=*value-'0';value=strchr(value,',');if(!value)break;value++;}}
+    if(buttons){const char *value=buttons->value->cstring;for(int i=0;i<12&&*value;i++){if(*value>='0'&&*value<='8')s_buttons[i]=*value-'0';value=strchr(value,',');if(!value)break;value++;}}
     s_ready=true;Tuple *theme=dict_find(iter,MESSAGE_KEY_THEME),*aut=dict_find(iter,MESSAGE_KEY_AUTO);
     if(theme)s_theme=theme->value->int32;
     Tuple *bg=dict_find(iter,MESSAGE_KEY_THEME_BACKGROUND),*fg=dict_find(iter,MESSAGE_KEY_THEME_TEXT),*sel=dict_find(iter,MESSAGE_KEY_THEME_SELECTION),*st=dict_find(iter,MESSAGE_KEY_THEME_SELECTION_TEXT),*font=dict_find(iter,MESSAGE_KEY_THEME_FONT),*size=dict_find(iter,MESSAGE_KEY_THEME_SIZE);
@@ -407,14 +429,14 @@ static void inbox(DictionaryIterator *iter, void *context) {
     memset(s_incoming,0,sizeof(s_incoming));
   } else if(kind==2) {
     Tuple *index=dict_find(iter,MESSAGE_KEY_INDEX),*folder=dict_find(iter,MESSAGE_KEY_ENTRY_KIND),*pinned=dict_find(iter,MESSAGE_KEY_PINNED);int i=index?index->value->int32:-1;
-    if(i>=0&&i<s_incoming_count&&id&&title){snprintf(s_incoming[i].id,sizeof(s_incoming[i].id),"%s",id->value->cstring);snprintf(s_incoming[i].title,sizeof(s_incoming[i].title),"%s",title->value->cstring);s_incoming[i].folder=folder&&folder->value->int32;s_incoming[i].pinned=pinned&&pinned->value->int32;}
+    if(i>=0&&i<s_incoming_count&&id&&title){snprintf(s_incoming[i].id,sizeof(s_incoming[i].id),"%s",id->value->cstring);snprintf(s_incoming[i].title,sizeof(s_incoming[i].title),"%s",title->value->cstring);if(text)snprintf(s_incoming[i].location,sizeof(s_incoming[i].location),"%s",text->value->cstring);s_incoming[i].folder=folder&&folder->value->int32;s_incoming[i].pinned=pinned&&pinned->value->int32;}
   } else if(kind==3) {
     clear_timeout();s_loading=false;
     bool complete=s_incoming_count>=0;for(int i=0;i<s_incoming_count;i++){if(!s_incoming[i].id[0])complete=false;}
     if(!complete){set_status("List interrupted · double Back to refresh");return;}
     memcpy(s_notes,s_incoming,sizeof(s_notes));s_count=s_incoming_count;s_offset=s_incoming_offset;s_total=s_incoming_total;
     snprintf(s_snapshot,sizeof(s_snapshot),"%s",s_incoming_snapshot);
-    set_status(s_folder_title);
+    set_status(s_search&&!s_total?"No matches · search again":s_folder_title);
     int row=s_restore_row;if(row>s_count)row=s_count;if(row<0)row=0;
     menu_layer_set_selected_index(s_menu,MenuIndex(0,row),row?MenuRowAlignCenter:MenuRowAlignTop,false);
   } else if(kind==4&&s_body) {
@@ -428,18 +450,18 @@ static void inbox(DictionaryIterator *iter, void *context) {
   } else if(kind==11){
     clear_timeout();s_loading=false;Tuple *pinned=dict_find(iter,MESSAGE_KEY_PINNED);bool value=pinned&&pinned->value->int32;
     if(id){for(int i=0;i<s_count;i++)if(strcmp(s_notes[i].id,id->value->cstring)==0)s_notes[i].pinned=value;if(strcmp(s_current_id,id->value->cstring)==0)s_note_pinned=value;}
-    s_snapshot[0]=0;for(int i=0;i<s_depth;i++)s_history[i].snapshot[0]=0;
+    s_snapshot[0]=0;s_before_search.snapshot[0]=0;for(int i=0;i<s_depth;i++)s_history[i].snapshot[0]=0;
     set_status(value?"Pinned to main page":"Unpinned");if(!s_body&&strcmp(s_folder,s_root)==0)refresh_list();
   } else if(kind==10) {
     clear_timeout();s_loading=false;
     if(id&&strcmp(id->value->cstring,s_current_id)==0&&s_body){if(s_action_menu)window_stack_pop(false);window_stack_pop(true);}
-    s_delete_id[0]=0;for(int i=0;i<s_depth;i++)s_history[i].snapshot[0]=0;refresh_list();
+    s_delete_id[0]=0;s_before_search.snapshot[0]=0;for(int i=0;i<s_depth;i++)s_history[i].snapshot[0]=0;refresh_list();
   } else if(kind==7||kind==8) {
     if(kind==8&&s_pending&&id&&strcmp(id->value->cstring,s_draft_id)!=0){set_status("Earlier note saved · draft kept");return;}
     if(s_pending&&id&&strcmp(id->value->cstring,s_draft_id)==0){clear_timeout();clear_draft();}
     set_status(kind==8?"Saved to vault":"On phone · waiting for Mac");if(kind==8)vibes_short_pulse();
     if(s_body)text_layer_set_text(s_page_label,kind==8?"Saved to vault":"On phone / waiting for Mac");
-    if(kind==8){s_snapshot[0]=0;for(int i=0;i<s_depth;i++)s_history[i].snapshot[0]=0;}
+    if(kind==8){s_snapshot[0]=0;s_before_search.snapshot[0]=0;for(int i=0;i<s_depth;i++)s_history[i].snapshot[0]=0;}
     if(kind==8&&id&&strcmp(id->value->cstring,s_last_append_id)==0){
       s_last_append_id[0]=0;
       if(s_body&&!s_loading&&strcmp(s_current_id,s_last_append_target)==0){s_loading=true;send_command(2,s_current_id,s_page,NULL);}

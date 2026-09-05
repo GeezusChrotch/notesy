@@ -19,7 +19,7 @@ No personal vault, account, network address or credential is embedded in the sha
 | Back long press | Exit app (watch OS) | Exit app (watch OS) |
 
 Phone Settings → Button shortcuts lets users assign **all six press/long-press gestures separately
-for each view**: normal navigation, new note, append, delete, pin/unpin, actions, no action or refresh.
+for each view**: normal navigation, new note, append, delete, pin/unpin, actions, no action, refresh or dictate to search.
 Double-pressing Back always opens Actions, including movement controls if normal buttons were reassigned.
 There are no Back or Next/Previous page menu entries.
 
@@ -37,6 +37,19 @@ be deleted from the watch. Finder’s Command-Shift-Period reveals `.trash` for 
 Pins are stored by the Mac connector per vault and survive restarts. A pinned root item appears
 only once. Nested pins open directly from the main page. A renamed or moved item needs to be
 pinned again at its new location; missing pins are hidden.
+
+## Dictate to search
+
+Open Actions → Dictate to search, speak a short term, then select a result to read it.
+Search works across the vault, including folders you have not opened. Titles and folder names
+use accent-insensitive fuzzy matching; matching words in note text rank below title matches.
+Results show the containing folder and load more automatically as you scroll. Back returns to
+the previous browser location. Search again repeats dictation without saving a note. You can
+assign search to any short or long press in either view using phone Settings.
+
+Search returns up to 100 ranked matches. Scans stop after 60,000 entries or roughly 7.5 seconds;
+limited scans are labeled Partial matches. Body search skips files above 1 MB. Search results
+remain stable for 30 minutes; Search again or Refresh performs a new scan. The Mac must be awake.
 
 ## Setup and upgrades
 
@@ -74,7 +87,7 @@ and receipts; invisible append markers prevent duplicate retries.
 - Regular Markdown notes up to 1 MB are supported. Simple Markdown renders as text; images,
   attachments, embeds and plugin-generated views are not rendered. Font glyph coverage varies.
 - Hidden paths and symbolic links are excluded. Browsing does not recursively scan the vault:
-  only visited folders are indexed. A folder can contain up to 60,000 visible entries; navigation
+  visited folders and search results are indexed. A folder can contain up to 60,000 visible entries; navigation
   history supports 24 opened folders. Both directions of paging use bounded watch memory.
 - A missing append target leaves the captured text queued for recovery; it never creates a
   replacement note. Pins refer to file paths, not Obsidian rename tracking.
@@ -90,7 +103,7 @@ npm run package
 Native C handles the watch UI, buttons and draft persistence. PebbleKit JS handles settings,
 transport and durable delivery. `gateway/server.js` hosts the loopback API;
 `gateway/browser.js` implements vault navigation, pins and explicit destinations while the v1
-API remains compatible with old queued notes. The Mac build bundles both server modules.
+API remains compatible with old queued notes. The Mac build bundles the server, browser and search modules.
 
 Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-0.1.0.pbw` for distribution; the latter
 omits SDK source maps. `tests/watch-emulator.py` exercises the compiled C app against the disposable
@@ -104,6 +117,7 @@ python3 scripts/emulator-fixture.py
 pebble install --emulator emery build/Notesy-fixture.pbw
 python tests/watch-emulator.py
 WATCH_TEST_DICTATION_ONLY=1 python tests/watch-emulator.py
+WATCH_TEST_SEARCH_ONLY=1 python tests/watch-emulator.py
 ```
 
 Use only the emulator fixture for those commands. The dictation check supplies simulated

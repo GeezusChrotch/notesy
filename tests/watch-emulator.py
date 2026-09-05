@@ -36,10 +36,10 @@ def worker():
   except queue.Empty:continue
   try:
    calls.append(m);cmd=m[0];seq=m[2]
-   if cmd==1:
-    v=http('/v2/browse?'+urllib.parse.urlencode({'folder':m.get(18,''),'offset':m.get(6,0),'snapshot':m.get(22,'')}))
+   if cmd in (1,7):
+    v=http(('/v2/search?' if cmd==7 else '/v2/browse?')+urllib.parse.urlencode({'q':m.get(5,''),'folder':m.get(18,''),'offset':m.get(6,0),'snapshot':m.get(22,'')}))
     send({1:1,2:seq,7:len(v['items']),6:v['offset'],23:v['total'],18:v['id'],19:v['parent'],4:v['title'],22:v['snapshot']})
-    for i,n in enumerate(v['items']):send({1:2,2:seq,8:i,3:n['id'],4:n['title'],20:int(n['folder']),21:int(n['pinned'])})
+    for i,n in enumerate(v['items']):send({1:2,2:seq,8:i,3:n['id'],4:n['title'],5:n.get('location',''),20:int(n['folder']),21:int(n['pinned'])})
     send({1:3,2:seq})
    elif cmd==2:
     v=http('/v2/notes/'+m[3]+'?page='+str(m.get(6,0)))
@@ -77,13 +77,27 @@ def voice_checks():
   # No real microphone audio is needed. Ignore late frames after a simulated result;
   # the SDK voice helper otherwise calls send_stop_audio with an unsupported argument.
   def _handle_audio_frame(self,session_id,frame):pass
- voice=FixtureVoice(pebble)
+ voice=FixtureVoice(pebble);search_words=['project','plna'];cancel_search=[False]
  def setup(u,encoder):
   voice.send_session_setup_result(SetupResult.Success,u)
   def finish():
-   voice.send_stop_audio();voice.send_dictation_result(TranscriptionResult.Success,sentences=[['Fixture','dictation','capture']],app_uuid=u)
-  threading.Timer(.7,finish).start()
+   voice.send_stop_audio();voice.send_dictation_result(TranscriptionResult.Success,sentences=[(search_words if os.environ.get('WATCH_TEST_SEARCH_ONLY') else ['Fixture','dictation','capture'])],app_uuid=u)
+  if not cancel_search[0]:threading.Timer(.7,finish).start()
  voice.register_handler('session_setup',setup)
+ if os.environ.get('WATCH_TEST_SEARCH_ONLY'):
+  settings();double_back();click('down');click('down');click('select');time.sleep(1.5);click('select');time.sleep(1.2);settle()
+  assert calls[-1][0]==7 and calls[-1][5]=='project plna';assert not any(m[0]==3 for m in calls)
+  shot('search-results.png');click('select');assert calls[-1][0]==2 and calls[-1][3]==info['note'];shot('search-reader.png')
+  custom=buttons.copy();custom[11]=8;settings(custom);search_words[:]=['note'];click('down',True);time.sleep(1.5);click('select');time.sleep(1.2);settle();assert calls[-1][0]==7
+  for _ in range(33):click('down')
+  assert any(m[0]==7 and m.get(6)==30 for m in calls),'Search did not fetch third page'
+  for _ in range(36):click('up')
+  assert [m for m in calls if m[0]==7][-1][6]==0
+  click('back');assert calls[-1][0]==1 and calls[-1][18]==info['root']
+  custom=buttons.copy();custom[4]=8;settings(custom);cancel_search[0]=True;click('select',True);time.sleep(1.5);click('back');time.sleep(1.2);assert not any(m[0]==3 for m in calls)
+  click('down');click('select');assert calls[-1][0]==2
+  print('PASS: Actions search, fuzzy result opening, reader/main search bindings, Back restoration and cancelled search with zero note captures',flush=True)
+  return
  settings();click('select');time.sleep(1.5);shot('vault-dictation-confirm.png')
  print('Simulated transcription reached the watch confirmation screen',flush=True)
  confirm='select'
@@ -112,7 +126,7 @@ def voice_checks():
  print('PASS: configured Append in browser targets the selected note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_DICTATION_ONLY'):voice_checks()
+ if os.environ.get('WATCH_TEST_DICTATION_ONLY') or os.environ.get('WATCH_TEST_SEARCH_ONLY'):voice_checks()
  else:
   if not os.environ.get('WATCH_TEST_BINDINGS_ONLY'):
    settings();assert calls[-1][0]==1;shot('vault-browser-root.png')
@@ -132,7 +146,7 @@ try:
    print('PASS: root pins, folders, root notes, nested Back, and forward/backward list and note paging',flush=True)
   for index in range(6):
    custom=buttons.copy();custom[index]=4;settings(custom);double_back()
-   for _ in range(7):click('down')
+   for _ in range(8):click('down')
    click('select')
    previous=len([m for m in calls if m[0]==6]);click(['up','select','down'][index%3],index>=3)
    assert len([m for m in calls if m[0]==6])==previous+1,('Main binding failed',index)

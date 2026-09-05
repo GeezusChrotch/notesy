@@ -189,7 +189,7 @@ class NoteStore {
 // StoneNotes remains the wire service ID for compatibility with existing paired clients.
 function makeServer({vault, state, token, folder}) {
   if (typeof token !== 'string' || token.length < 32) throw new Error('A private access token is required.');
-  const BrowserStore=require('./browser')(NoteStore,Fault,hash,atomicJSON,shortText);
+  const BrowserStore=require('./browser')(NoteStore,Fault,hash,atomicJSON,shortText,plainText);
   const browser=new BrowserStore(vault,state), pairing=new Map();
   const legacyFolder=folder||'Pebble', legacyId=legacyFolder==='Pebble'?hash(browser.vault):hash(browser.vault+'\0'+legacyFolder);
   let legacy;const legacyStore=()=>legacy||(legacy=new NoteStore(vault,state,legacyFolder));
@@ -238,6 +238,7 @@ function makeServer({vault, state, token, folder}) {
       const mutation=url.pathname.match(/^\/v1\/notes\/([a-f0-9]{64})\/(append|delete)$/);
       if(req.method==='POST'&&mutation)return send(res,200,mutation[2]==='append'?legacyStore().append(mutation[1],body):legacyStore().remove(mutation[1],body));
       if(req.method==='POST' && url.pathname==='/v1/notes') return send(res,200,legacyStore().create(body));
+      if(req.method==='GET'&&url.pathname==='/v2/search')return send(res,200,await browser.search(url.searchParams.get('q'),integer('offset'),url.searchParams.get('snapshot')||''));
       if(req.method==='GET'&&url.pathname==='/v2/browse')return send(res,200,browser.list(url.searchParams.get('folder')||'',integer('offset'),url.searchParams.get('snapshot')||''));
       if(req.method==='GET'&&/^\/v2\/notes\/[a-f0-9]{64}$/.test(url.pathname))return send(res,200,browser.read(url.pathname.split('/').pop(),integer('page')));
       if(req.method==='POST'&&url.pathname==='/v2/notes')return send(res,200,browser.create(body));

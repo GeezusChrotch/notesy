@@ -2,7 +2,7 @@
 const fs=require('node:fs'), path=require('node:path');
 // Opaque IDs keep paths out of the watch protocol. Only entries discovered inside
 // this vault are resolvable; every use rechecks all ancestors without following links.
-module.exports=(NoteStore,Fault,hash,atomicJSON,shortText)=>class BrowserStore {
+module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText)=>class BrowserStore {
   constructor(vault,state){
     this.vault=fs.realpathSync(vault);this.state=state;
     this.vaultId=hash(this.vault+'\0browser-v2');
@@ -54,6 +54,54 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText)=>class BrowserStore {
     }
     const parent=directory.relative?this.remember(path.posix.dirname(directory.relative)==='.'?'':path.posix.dirname(directory.relative),true):'';
     return {vaultId:this.vaultId,id,parent,title:directory.relative?shortText(path.basename(directory.relative)):'Vault',items:view.items.slice(offset,offset+15),offset,total:view.items.length,snapshot};
+  }
+  async search(term,offset=0,snapshot=''){
+    const {normalize,score}=require('./search');
+    if(typeof term!=='string'||Buffer.byteLength(term)>255||!normalize(term)||normalize(term).split(' ').length>12)throw new Fault(400,'Speak a short search term (up to 12 words).');
+    const query=normalize(term),id='search:'+query;
+    for(const [key,value] of this.snapshots)if(value.expires<Date.now())this.snapshots.delete(key);
+    let view=snapshot&&this.snapshots.get(snapshot);
+    if(snapshot&&(!view||view.id!==id))throw new Fault(409,'Search results expired. Search again to refresh them.');
+    if(!view){
+      const matches=[],directories=[''];let visited=0,partial=false;const deadline=Date.now()+7500;
+      while(directories.length){
+        const folder=directories.shift();let entries;
+        try{entries=await fs.promises.readdir(this.checked(folder,true),{withFileTypes:true});}catch(e){if(!folder)throw e;partial=true;continue;}
+        entries.sort((a,b)=>a.name.localeCompare(b.name));
+        for(const entry of entries){
+          if(++visited>60000||Date.now()>deadline){partial=true;break;}
+          if(entry.name.startsWith('.'))continue;
+          const relative=folder?folder+'/'+entry.name:entry.name;
+          if(entry.isDirectory()){directories.push(relative);continue;}
+          if(!entry.isFile()||!/\.md$/i.test(entry.name))continue;
+          const title=entry.name.replace(/\.md$/i,'');let rank=score(query,title,folder);
+          try{
+            const file=this.checked(relative,false);
+            if(!rank){
+              const fd=await fs.promises.open(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
+              try{const stat=await fd.stat();if(!stat.isFile()||stat.size>1024*1024)continue;
+                const text=await fd.readFile('utf8');this.checked(relative,false);rank=score(query,title,folder,plainText(text));
+              }finally{await fd.close();}
+            }
+            if(rank)matches.push({relative,rank});
+          }catch(e){if(e.code!=='ENOENT'&&e.status!==404)partial=true;}
+        }
+        if(visited>60000||Date.now()>deadline){partial=true;break;}
+      }
+      matches.sort((a,b)=>b.rank-a.rank||a.relative.localeCompare(b.relative,undefined,{numeric:true}));
+      const items=matches.slice(0,100).flatMap(match=>{
+        try{
+        const key=this.remember(match.relative,false),folder=path.posix.dirname(match.relative);
+        this.remember(folder==='.'?'':folder,true);
+        return [{...this.item(key),location:shortText(folder==='.'?'Vault':folder,90)}];
+        }catch{partial=true;return [];}
+      });
+      snapshot=require('node:crypto').randomBytes(12).toString('hex');
+      view={id,items,partial,limited:matches.length>100,expires:Date.now()+30*60*1000};
+      if(this.snapshots.size>=32)this.snapshots.delete(this.snapshots.keys().next().value);
+      this.snapshots.set(snapshot,view);this.flush();
+    }
+    return {vaultId:this.vaultId,id:this.root,parent:'',title:shortText((view.partial?'Partial matches: ':view.limited?'Top 100: ':'Search: ')+term),items:view.items.slice(offset,offset+15),offset,total:view.items.length,snapshot,partial:view.partial,limited:view.limited};
   }
   store(relative){this.checked(relative,true);return new NoteStore(this.vault,this.state,relative,{root:true,create:false});}
   note(id){const e=this.resolve(id,false),relative=path.posix.dirname(e.relative);return {entry:e,store:this.store(relative==='.'?'':relative),localId:hash(path.basename(e.relative))};}

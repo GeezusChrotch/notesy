@@ -60,12 +60,12 @@ Pebble.addEventListener('appmessage',function(event){
   }
   if(m.COMMAND===4){pump();return;}
   activeRequest=seq;
-  if(m.COMMAND===1){
-    request(config,'GET',m.API===2?'/v2/browse?folder='+encodeURIComponent(m.FOLDER_ID||'')+'&offset='+(m.PAGE||0)+'&snapshot='+encodeURIComponent(m.SNAPSHOT||''):'/v1/notes?offset='+(m.PAGE||0),null,function(e,value){
+  if(m.COMMAND===1||m.COMMAND===7){
+    request(config,'GET',m.COMMAND===7?'/v2/search?q='+encodeURIComponent(m.TEXT||'')+'&offset='+(m.PAGE||0)+'&snapshot='+encodeURIComponent(m.SNAPSHOT||''):m.API===2?'/v2/browse?folder='+encodeURIComponent(m.FOLDER_ID||'')+'&offset='+(m.PAGE||0)+'&snapshot='+encodeURIComponent(m.SNAPSHOT||''):'/v1/notes?offset='+(m.PAGE||0),null,function(e,value){
       if(seq!==activeRequest)return;if(e){error(e.message,seq);return;}
       if(m.API===2){
         send({TYPE:1,REQUEST:seq,COUNT:value.items.length,PAGE:value.offset,TOTAL:value.total,FOLDER_ID:value.id,PARENT_ID:value.parent,TITLE:value.title,SNAPSHOT:value.snapshot});
-        value.items.forEach(function(n,i){send({TYPE:2,REQUEST:seq,INDEX:i,NOTE_ID:n.id,TITLE:n.title,ENTRY_KIND:n.folder?1:0,PINNED:n.pinned?1:0});});
+        value.items.forEach(function(n,i){send({TYPE:2,REQUEST:seq,INDEX:i,NOTE_ID:n.id,TITLE:n.title,ENTRY_KIND:n.folder?1:0,PINNED:n.pinned?1:0,TEXT:n.location||''});});
       }else{
         send({TYPE:1,REQUEST:seq,COUNT:value.notes.length,PAGE:value.next===null?-1:value.next});
         value.notes.forEach(function(n,i){send({TYPE:2,REQUEST:seq,INDEX:i,NOTE_ID:n.id,TITLE:n.title});});
