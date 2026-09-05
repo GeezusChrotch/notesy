@@ -10,8 +10,7 @@ the author's vault, account, network, or credentials is embedded in the shared a
 
 - **Select New note:** dictate and confirm. Hold Select in the menu to capture from any row.
 - **Up / Down:** browse notes or scroll the open note.
-- **Select a note:** read it. Select advances a long note to its next page; hold Select goes back
-  a page. In a single-page note, hold Select starts a new dictation.
+- **Select a note:** read it. Hold Select appends dictation to that note. Select opens actions: append, next/previous page, or delete. Deletion requires confirmation and moves the note to `Pebble/.trash`.
 - **Back:** return to the list. **More notes** advances the list in batches of 15.
 - **Refresh**, or hold Down in the menu: return to the newest notes.
 
@@ -38,7 +37,7 @@ private network. The connector requires macOS 14+ and bundles its runtime.
 - This release reads immediate `.md` children of `Pebble`, up to 1 MB each. It renders simple
   Markdown as text, with placeholders for images and embeds. Plugin-generated views, attachments,
   and nested folders are not supported. Displayed characters depend on the watch's system fonts.
-- Existing notes can be read but cannot be edited, appended to, or deleted from the watch.
+- Existing notes can be read, appended to by dictation, and moved to trash after confirmation. New-note creation is available only from the main page.
 - A pending note remains bound to its original Mac and vault. Phone settings exposes the text
   for recovery if you intentionally change that destination.
 
@@ -61,3 +60,5 @@ See `PRIVACY.md` for storage and transcription details.
 New dictated files use the Mac’s local date and readable time followed by the first sentence, such as `2026-09-09 - 5.32pm - This is the dictated note.md`. Duplicate titles within the same minute receive `(2)`, `(3)`, and so on. Delivery identifiers stay in metadata and local receipts for retry protection. Existing notes retain their filenames.
 
 Appearance settings use Pome’s five presets and custom background, text, and selection colors. Time 2 bundles Inter, Roboto, Open Sans, Montserrat, and Poppins in 14, 18, 22, 26, and 30 pixel sizes. Pebble Time uses Pome’s system-font choices and their supported sizes. The selected font applies to menu titles and note reading; hints remain small. Font licenses are in `resources/fonts/licenses`.
+
+Queued appends remain bound to the original note and vault, including after restart. If a target is moved or removed, the text stays on the phone for recovery instead of creating a new note. Append markers are hidden in rendered Markdown and prevent duplicate retries. Deleted notes remain in `Pebble/.trash`; restore them using Finder (Command-Shift-Period shows hidden folders).

@@ -31,7 +31,7 @@ function request(c, method, route, body, callback) {
 }
 function error(text,seq){send({TYPE:9,TEXT:text,REQUEST:seq||0});}
 try {
-  delivery=new Delivery(localStorage,function(c,note,cb){request(c,'POST','/v1/notes',note,cb);},function(state,id,message){
+  delivery=new Delivery(localStorage,function(c,note,cb){request(c,'POST',note.targetId?'/v1/notes/'+encodeURIComponent(note.targetId)+'/append':'/v1/notes',note,cb);},function(state,id,message){
     send({TYPE:state==='saved'?8:state==='queued'?7:5,NOTE_ID:id,TEXT:state==='saved'?'Saved to vault':state==='queued'?'On phone · waiting for Mac':message||'Waiting for Mac'});
     if(state==='saved')setTimeout(pump,400);
   });
@@ -42,7 +42,11 @@ Pebble.addEventListener('appmessage',function(event){
   var m=event.payload,seq=m.REQUEST||0;
   if(m.COMMAND===3){
     if(!delivery){error('Phone storage unavailable. Your draft is kept.',seq);return;}
-    try{delivery.enqueue(m.NOTE_ID,m.TEXT,config);pump();}catch(e){error(e.message,seq);}return;
+    try{delivery.enqueue(m.NOTE_ID,m.TEXT,config,m.TARGET_ID);pump();}catch(e){error(e.message,seq);}return;
+  }
+  if(m.COMMAND===5){
+    if(delivery&&delivery.pending().some(function(n){return n.targetId===m.NOTE_ID;})){error("Wait for the pending append to save before deleting this note.",seq);return;}
+    request(config,'POST','/v1/notes/'+encodeURIComponent(m.NOTE_ID)+'/delete',{requestId:m.TEXT,vaultId:config&&config.vaultId},function(e,v){if(e||!v||!v.deleted){error(e?e.message:'Deletion was not confirmed. Please retry.',seq);return;}send({TYPE:10,NOTE_ID:m.NOTE_ID,REQUEST:seq});});return;
   }
   if(m.COMMAND===4){pump();return;}
   activeRequest=seq;
@@ -63,7 +67,7 @@ Pebble.addEventListener('appmessage',function(event){
 setInterval(pump,15000);
 function configurationURL(){
   var saved=JSON.stringify(config||{}).replace(/</g,'\\u003c');
-  var pendingText=JSON.stringify(delivery?delivery.pending().map(function(n){return n.text;}).join('\n\n—\n\n'):'Pending notes could not be loaded.').replace(/</g,'\\u003c');
+  var pendingText=JSON.stringify(delivery?delivery.pending().map(function(n){return (n.targetId?'[Append to existing note]\n':'')+n.text;}).join('\n\n—\n\n'):'Pending notes could not be loaded.').replace(/</g,'\\u003c');
   var html='<!doctype html><html><meta name="viewport" content="width=device-width,initial-scale=1"><title>StoneNotes Settings</title><style>body{font:17px -apple-system,sans-serif;max-width:34rem;margin:auto;padding:22px;background:#f5f5f4;color:#222}textarea,button,select{font:inherit;width:100%;box-sizing:border-box;padding:12px;margin:10px 0}textarea{height:160px;font-size:13px}label{display:block;margin:16px 0}button{background:#285f47;color:white;border:0;border-radius:8px}</style><h1>StoneNotes</h1><p>On your Mac, open Organik Apps Pebble Connector → StoneNotes → Connect Phone. Copy the pairing details from the QR page and paste below.</p><textarea id="pair" aria-label="Pairing details" placeholder="Paste pairing details"></textarea><button id="test">Test connection</button><p id="status"></p><h2>Appearance</h2><label>Preset<select id="appearance-preset"></select></label><label>Font<select id="appearance-font"></select></label><label>Font size<select id="appearance-size"></select></label><label>Background<input type="color" id="appearance-background"></label><label>Text<input type="color" id="appearance-text"></label><label>Selection<input type="color" id="appearance-selection"></label><label><input id="auto" type="checkbox"> Start dictation when the app opens</label><button id="save">Save settings</button><script>var saved='+saved+';var pair=document.getElementById("pair"),statusLabel=document.getElementById("status");pair.value=saved.gatewayURL?JSON.stringify({gatewayURL:saved.gatewayURL,gatewayToken:saved.gatewayToken,vaultId:saved.vaultId}):"";document.getElementById("auto").checked=!!saved.autoDictate;function read(){var c=JSON.parse(pair.value);c.gatewayURL=c.gatewayURL.replace(/\\/$/,"");if(!/^https:\\/\\/[a-z0-9.-]+\\.ts\\.net(?::\\d+)?$/i.test(c.gatewayURL)||typeof c.gatewayToken!=="string"||c.gatewayToken.length<32)throw Error("Paste the complete pairing details from your Mac.");return c;}var tested=null;document.getElementById("test").onclick=function(){try{var c=read();statusLabel.textContent="Connecting…";var x=new XMLHttpRequest();x.open("GET",c.gatewayURL+"/v1/health");x.setRequestHeader("Authorization","Bearer "+c.gatewayToken);x.timeout=10000;x.onload=function(){try{var j=JSON.parse(x.responseText);if(x.status!==200||j.service!=="StoneNotes")throw Error(j.error||"Connection failed.");c.vaultId=j.vaultId;pair.value=JSON.stringify(c);tested=pair.value;statusLabel.textContent="Connected to your Pebble notes folder.";}catch(e){statusLabel.textContent=e.message;}};x.onerror=x.ontimeout=function(){statusLabel.textContent="Cannot reach your Mac. Check Tailscale and the connector.";};x.send();}catch(e){statusLabel.textContent=e.message;}};document.getElementById("save").onclick=function(){try{var c=read();if(!/^[a-f0-9]{64}$/.test(c.vaultId))throw Error("Test the connection before saving.");c.appearance=readAppearance();c.autoDictate=document.getElementById("auto").checked;location.href="pebblejs://close#"+encodeURIComponent(JSON.stringify(c));}catch(e){statusLabel.textContent=e.message;}};</script></html>';
   html=html.replace('<button id="save">','<details><summary>Pending notes on this phone</summary><p>If your vault or Mac connection changes, you can copy these notes here.</p><textarea id="pending" readonly aria-label="Pending note text"></textarea></details><button id="save">');
   html=html.replace('var tested=null;', 'var readAppearance=('+Themes.setup.toString()+')('+JSON.stringify(Themes.normalize(config,enhanced()))+','+JSON.stringify(Themes.presets(enhanced()))+','+JSON.stringify(Themes.sizes)+');var tested=null;');

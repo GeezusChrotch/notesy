@@ -36,3 +36,13 @@ test('settings shows connection progress, success and errors with browser window
  elements.test.onclick();request.onerror();assert.match(elements.status.textContent,/Cannot reach/);
  elements.pair.value='invalid';elements.test.onclick();assert.ok(elements.status.textContent.length>0);assert.notEqual(elements.status.textContent,'Connecting…');
 });
+test('phone routes append to the chosen note and only confirms an acknowledged deletion',()=>{
+ const p=phone(),id='b'.repeat(64);p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify(config))});
+ p.handlers.appmessage({payload:{COMMAND:3,NOTE_ID:'append_phone_123',TARGET_ID:id,TEXT:'Add this'}});
+ assert.ok(p.requests[0].url.endsWith('/'+id+'/append'));assert.equal(JSON.parse(p.requests[0].body).targetId,id);
+ p.requests[0].status=200;p.requests[0].responseText='{"saved":true}';p.requests[0].onload();
+ p.handlers.appmessage({payload:{COMMAND:5,NOTE_ID:id,TEXT:'delete_phone_123',REQUEST:9}});
+ const req=p.requests[1];assert.ok(req.url.endsWith('/'+id+'/delete'));req.status=200;req.responseText='{"saved":true}';req.onload();assert.ok(!p.messages.some(m=>m.TYPE===10));
+ p.handlers.appmessage({payload:{COMMAND:5,NOTE_ID:id,TEXT:'delete_phone_123',REQUEST:10}});
+ const again=p.requests[2];again.status=200;again.responseText='{"deleted":true}';again.onload();assert.ok(p.messages.some(m=>m.TYPE===10&&m.REQUEST===10));
+});

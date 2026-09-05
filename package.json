@@ -46,7 +46,8 @@
       "THEME_SELECTION": 13,
       "THEME_SELECTION_TEXT": 14,
       "THEME_FONT": 15,
-      "THEME_SIZE": 16
+      "THEME_SIZE": 16,
+      "TARGET_ID": 17
     },
     "resources": {
       "media": [

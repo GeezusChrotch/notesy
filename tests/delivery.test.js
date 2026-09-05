@@ -15,3 +15,10 @@ test('storage failure cannot acknowledge capture or delete a delivered note prem
 test('queued notes never move to a newly selected vault or Mac',()=>{
  const s=storage(),events=[];const d=new Delivery(s,()=>assert.fail('wrong destination'),(...a)=>events.push(a));d.enqueue('capture-4','For original vault',config);d.pump({...config,vaultId:'other'});d.pump({...config,gatewayURL:'https://other.ts.net'});assert.equal(d.pending().length,1);assert.equal(events.at(-1)[0],'blocked');
 });
+test('append destination survives restart and cannot become a new note or another target',()=>{
+ const data={};const storage={getItem:k=>data[k]||null,setItem:(k,v)=>data[k]=v};const config={gatewayURL:'https://unit.example.ts.net',vaultId:'a'.repeat(64)};const target='b'.repeat(64);
+ let sent;let d=new Delivery(storage,()=>{},()=>{});d.enqueue('append_queued_123','More text',config,target);
+ d=new Delivery(storage,(c,n,cb)=>{sent=n;cb(Error('offline'));},()=>{});d.pump(config);assert.equal(sent.targetId,target);
+ assert.throws(()=>d.enqueue('append_queued_123','More text',config,'c'.repeat(64)),/conflict/);
+ assert.equal(d.pending()[0].targetId,target);
+});

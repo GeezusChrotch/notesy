@@ -13,6 +13,7 @@ function atomicJSON(file, value) {
 }
 function plainText(markdown) {
   return markdown.replace(/^\uFEFF/, '').replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, '')
+    .replace(/<!-- stonenotes-append:[a-f0-9]{64} -->/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '[Image]')
     .replace(/!\[\[[^\]]+\]\]/g, '[Embedded content]')
     .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2').replace(/\[\[([^\]]+)\]\]/g, '$1')
@@ -78,6 +79,59 @@ class NoteStore {
     const chunks = pages(plainText(buffer.toString('utf8')));
     if (page >= chunks.length) throw new Fault(409, 'This note changed. Reopen it from the list.');
     return {id, title:entry.title, text:chunks[page], page, pages:chunks.length};
+  }
+  mutationReceipt(requestId, vaultId, operation, id, text='') {
+    this.checkFolder();
+    if(vaultId!==this.vaultId)throw new Fault(409,'The selected vault changed. Restore the original pairing.');
+    if(typeof requestId!=='string'||!/^[a-zA-Z0-9_-]{8,100}$/.test(requestId)||!/^[a-f0-9]{64}$/.test(id))throw new Fault(400,'Invalid note operation.');
+    const file=path.join(this.receipts,hash(requestId)+'.json'),digest=hash(operation+id+text);
+    const receipt=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):null;
+    if(receipt&&receipt.digest!==digest)throw new Fault(409,'This delivery ID already belongs to another operation.');
+    return {file,digest,receipt};
+  }
+  append(id,{requestId,text,vaultId}) {
+    if(typeof text!=='string'||!text.trim()||Buffer.byteLength(text)>4096||text.includes('\0'))throw new Fault(400,'Dictate a note of up to 4096 bytes.');
+    const tx=this.mutationReceipt(requestId,vaultId,'append',id,text);
+    if(tx.receipt&&tx.receipt.saved)return {saved:true,id,duplicate:true};
+    const entry=this.entries().find(e=>e.id===id);
+    if(!entry)throw new Fault(404,'This note was moved or deleted. Appended text is kept on your phone.');
+    const destination=path.join(this.folder,entry.name),fd=fs.openSync(destination,fs.constants.O_RDWR|fs.constants.O_APPEND|fs.constants.O_NOFOLLOW);
+    try {
+      const stat=fs.fstatSync(fd);
+      if(!stat.isFile()||stat.size>1024*1024)throw new Fault(413,'This note is too large to append from the watch.');
+      const before=fs.readFileSync(fd),marker='<!-- stonenotes-append:'+hash(requestId)+' -->';
+      let receipt=tx.receipt;
+      if(!receipt){receipt={operation:'append',filename:entry.name,digest:tx.digest,before:hash(before),saved:false};atomicJSON(tx.file,receipt);}
+      if(!before.includes(Buffer.from(marker))){
+        if(hash(before)!==receipt.before)throw new Fault(409,'The note changed during an interrupted append. Your dictated text is kept on the phone.');
+        const current=fs.lstatSync(destination);
+        if(current.ino!==stat.ino||current.dev!==stat.dev||current.isSymbolicLink())throw new Fault(409,'The note moved while appending. Please retry.');
+        // Append to the existing inode; never replace the note with a stale copy.
+        fs.writeFileSync(fd,'\n\n'+text.trim()+'\n'+marker+'\n');fs.fsyncSync(fd);
+        const after=fs.lstatSync(destination);
+        if(after.ino!==stat.ino||after.dev!==stat.dev)throw new Fault(409,'The note moved while appending. Check the note before retrying.');
+      }
+      receipt.saved=true;atomicJSON(tx.file,receipt);return {saved:true,id};
+    } finally {fs.closeSync(fd);}
+  }
+  remove(id,{requestId,vaultId}) {
+    const tx=this.mutationReceipt(requestId,vaultId,'delete',id);
+    if(tx.receipt&&tx.receipt.saved)return {deleted:true,id,duplicate:true};
+    const trash=path.join(this.folder,'.trash');
+    if(!fs.existsSync(trash))fs.mkdirSync(trash,{mode:0o700});
+    if(!fs.lstatSync(trash).isDirectory()||fs.lstatSync(trash).isSymbolicLink()||fs.realpathSync(trash)!==trash)throw new Fault(409,'The note trash folder is unavailable.');
+    let receipt=tx.receipt;
+    if(!receipt){
+      const entry=this.entries().find(e=>e.id===id);if(!entry)throw new Fault(404,'This note was already moved or deleted. Refresh the list.');
+      receipt={operation:'delete',filename:entry.name,trash:hash(requestId)+'.md',digest:tx.digest,saved:false};atomicJSON(tx.file,receipt);
+    }
+    const destination=path.join(trash,receipt.trash);
+    if(!fs.existsSync(destination)){
+      const source=path.join(this.folder,receipt.filename),stat=fs.lstatSync(source);
+      if(!stat.isFile()||stat.isSymbolicLink())throw new Fault(409,'This note is no longer a regular Markdown file.');
+      fs.renameSync(source,destination);
+    }
+    receipt.saved=true;atomicJSON(tx.file,receipt);return {deleted:true,id};
   }
   create({requestId, text, vaultId}) {
     this.checkFolder();
@@ -168,6 +222,8 @@ function makeServer({vault, state, token}) {
       const integer=(key)=>{const value=url.searchParams.get(key)||'0';if(!/^\d{1,7}$/.test(value))throw new Fault(400,'Invalid page.');return Number(value);};
       if(req.method==='GET' && url.pathname==='/v1/notes') return send(res,200,store.list(integer('offset')));
       if(req.method==='GET' && /^\/v1\/notes\/[a-f0-9]{64}$/.test(url.pathname)) return send(res,200,store.read(url.pathname.split('/').pop(),integer('page')));
+      const mutation=url.pathname.match(/^\/v1\/notes\/([a-f0-9]{64})\/(append|delete)$/);
+      if(req.method==='POST'&&mutation)return send(res,200,mutation[2]==='append'?store.append(mutation[1],body):store.remove(mutation[1],body));
       if(req.method==='POST' && url.pathname==='/v1/notes') return send(res,200,store.create(body));
       throw new Fault(404,'Unknown request.');
     } catch(error) { if(!res.headersSent)send(res,error.status||500,{error:error.status?error.message:'The Mac could not access the notes folder. Check the connector.'}); }

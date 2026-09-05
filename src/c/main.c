@@ -2,7 +2,10 @@
 #define MAX_NOTES 15
 #define DRAFT_SIZE 768
 typedef struct { char id[65]; char title[112]; } Note;
-static Window *s_main, *s_reader;
+static Window *s_main, *s_reader, *s_actions;
+static MenuLayer *s_action_menu;
+static bool s_confirm_delete;
+static char s_capture_target[65],s_draft_target[65],s_last_append_id[96],s_last_append_target[65],s_delete_id[96];
 static MenuLayer *s_menu;
 static ScrollLayer *s_scroll;
 static TextLayer *s_body, *s_heading, *s_page_label;
@@ -43,6 +46,7 @@ static void send_command(int command, const char *id, int page, const char *text
   dict_write_int(iter, MESSAGE_KEY_PAGE, &page, sizeof(page), true);
   if (id) dict_write_cstring(iter, MESSAGE_KEY_NOTE_ID, id);
   if (text) dict_write_cstring(iter, MESSAGE_KEY_TEXT, text);
+  if(command==3&&s_draft_target[0])dict_write_cstring(iter,MESSAGE_KEY_TARGET_ID,s_draft_target);
   if (app_message_outbox_send() != APP_MSG_OK) { set_status("Phone unavailable · draft kept"); return; }
   clear_timeout(); s_timeout = app_timer_register(18000, timed_out, NULL);
 }
@@ -149,11 +153,12 @@ static bool persist_draft(void) {
     size_t size = len-i < 192 ? len-i : 192;
     if (persist_write_data(110+i/192, s_draft+i, size) != (int)size) return false;
   }
+  if(persist_write_string(102,s_draft_target)<0)return false;
   if (persist_write_string(101, s_draft_id) < 0) return false;
   return persist_write_int(100, len) > 0;
 }
 static void clear_draft(void) {
-  persist_delete(100); persist_delete(101);
+  persist_delete(100); persist_delete(101);persist_delete(102);s_draft_target[0]=0;
   for (int i=0; i<4; i++) persist_delete(110+i);
   s_pending=false; s_draft[0]=0; s_draft_id[0]=0;
 }
@@ -165,8 +170,10 @@ static void dictation_done(DictationSession *session, DictationSessionStatus sta
   if (!text || !text[0]) { set_status("No speech detected"); return; }
   if (strlen(text) >= sizeof(s_draft)) { set_status("Note too long · try a shorter thought"); return; }
   snprintf(s_draft, sizeof(s_draft), "%s", text);
+  snprintf(s_draft_target,sizeof(s_draft_target),"%s",s_capture_target);
   time_t now; uint16_t ms; time_ms(&now, &ms);
   snprintf(s_draft_id, sizeof(s_draft_id), "%lu-%u-%lu-%lu", (unsigned long)now, ms, (unsigned long)rand(), (unsigned long)rand());
+  if(s_draft_target[0]){snprintf(s_last_append_id,sizeof(s_last_append_id),"%s",s_draft_id);snprintf(s_last_append_target,sizeof(s_last_append_target),"%s",s_draft_target);}
   s_pending = true;
   if (!persist_draft()) { set_status("Watch storage full · keep app open and retry"); return; }
   retry_draft();
@@ -174,7 +181,7 @@ static void dictation_done(DictationSession *session, DictationSessionStatus sta
 static void dictate(void) {
   if (s_pending) { retry_draft(); return; }
   if (!s_ready) { set_status("Open Pebble on your phone first"); return; }
-  if (s_dictation) { s_loading=false; clear_timeout(); dictation_session_start(s_dictation); }
+  if (s_dictation) { snprintf(s_capture_target,sizeof(s_capture_target),"%s",s_body?s_current_id:""); s_loading=false; clear_timeout(); dictation_session_start(s_dictation); }
   else set_status("Dictation requires a microphone and phone");
 }
 static uint16_t row_count(MenuLayer *menu, uint16_t section, void *context) { return 1+s_count+(s_next>=0?1:0)+1; }
@@ -212,8 +219,8 @@ static void render_note(void) {
   snprintf(s_heading_title,sizeof(s_heading_title),"%s",note_title(s_title,NULL,0));
   text_layer_set_text(s_heading, s_heading_title);
   static char label[64];
-  snprintf(label, sizeof(label), "%d/%d · Select next", s_page+1, s_pages);
-  text_layer_set_text(s_page_label, s_pages>1 ? label : "Hold Select: new note");
+  snprintf(label, sizeof(label), "%d/%d · Select: actions", s_page+1, s_pages);
+  text_layer_set_text(s_page_label, label);
 }
 static void next_page(ClickRecognizerRef recognizer, void *context) {
   if (s_loading) return;
@@ -222,12 +229,45 @@ static void next_page(ClickRecognizerRef recognizer, void *context) {
 }
 static void previous_page(ClickRecognizerRef recognizer, void *context) {
   if (s_loading) return;
-  if (s_pages<=1) { dictate(); return; }
+  if (s_pages<=1) return;
   if (s_page>0) { s_loading=true; send_command(2, s_current_id, s_page-1, NULL); }
 }
+static void open_actions(ClickRecognizerRef recognizer, void *context);
+static void append_click(ClickRecognizerRef recognizer, void *context){dictate();}
 static void reader_clicks(void *context) {
-  window_single_click_subscribe(BUTTON_ID_SELECT, next_page);
-  window_long_click_subscribe(BUTTON_ID_SELECT, 600, previous_page, NULL);
+  window_single_click_subscribe(BUTTON_ID_SELECT, open_actions);
+  window_long_click_subscribe(BUTTON_ID_SELECT, 600, append_click, NULL);
+}
+static uint16_t action_rows(MenuLayer *menu,uint16_t section,void *context){return s_confirm_delete?2:5;}
+static void action_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *context){
+  const char *names[]={"Append dictation","Next page","Previous page","Delete note","Back"};
+  if(s_confirm_delete)menu_cell_basic_draw(ctx,cell,index->row?"Move to trash":"Cancel",index->row?"Removes this note":s_heading_title,NULL);
+  else menu_cell_basic_draw(ctx,cell,names[index->row],index->row==0?"Or hold Select in note":NULL,NULL);
+}
+static void action_selected(MenuLayer *menu,MenuIndex *index,void *context){
+  int row=index->row;
+  if(s_confirm_delete){
+    if(row==0){window_stack_pop(true);return;}
+    if(s_loading)return;
+    if(!s_delete_id[0])snprintf(s_delete_id,sizeof(s_delete_id),"delete-%lu-%lu",(unsigned long)time(NULL),(unsigned long)rand());
+    window_stack_pop(true);s_loading=true;send_command(5,s_current_id,0,s_delete_id);
+    text_layer_set_text(s_page_label,"Deleting…");return;
+  }
+  if(row==3){s_confirm_delete=true;menu_layer_reload_data(s_action_menu);menu_layer_set_selected_index(s_action_menu,MenuIndex(0,0),MenuRowAlignTop,false);return;}
+  window_stack_pop(true);
+  if(row==0)dictate();else if(row==1)next_page(NULL,NULL);else if(row==2)previous_page(NULL,NULL);
+}
+static void actions_load(Window *window){
+  s_action_menu=menu_layer_create(layer_get_bounds(window_get_root_layer(window)));
+  menu_layer_set_callbacks(s_action_menu,NULL,(MenuLayerCallbacks){.get_num_rows=action_rows,.draw_row=action_draw,.select_click=action_selected});
+  menu_layer_set_normal_colors(s_action_menu,s_background,s_foreground);menu_layer_set_highlight_colors(s_action_menu,s_highlight,s_selection_text);
+  menu_layer_set_click_config_onto_window(s_action_menu,window);layer_add_child(window_get_root_layer(window),menu_layer_get_layer(s_action_menu));
+}
+static void actions_unload(Window *window){menu_layer_destroy(s_action_menu);s_action_menu=NULL;}
+static void open_actions(ClickRecognizerRef recognizer, void *context){
+  if(s_loading)return;
+  if(s_actions)window_destroy(s_actions);
+  s_confirm_delete=false;s_actions=window_create();window_set_window_handlers(s_actions,(WindowHandlers){.load=actions_load,.unload=actions_unload});window_stack_push(s_actions,true);
 }
 static void reader_unload(Window *window) {
   s_loading=false; ++s_request; clear_timeout();
@@ -254,6 +294,7 @@ static void select_row(MenuLayer *menu, MenuIndex *index, void *context) {
   if (row==0) { dictate(); return; }
   if (s_loading) return;
   if (row<=s_count) {
+    s_delete_id[0]=0;
     snprintf(s_current_id,sizeof(s_current_id),"%s",s_notes[row-1].id);
     snprintf(s_title,sizeof(s_title),"%s",s_notes[row-1].title);
     snprintf(s_body_text,sizeof(s_body_text),"Loading…"); s_page=0; s_pages=1;
@@ -298,10 +339,19 @@ static void inbox(DictionaryIterator *iter, void *context) {
     if(text)snprintf(s_body_text,sizeof(s_body_text),"%s",text->value->cstring);
     if(title)snprintf(s_title,sizeof(s_title),"%s",title->value->cstring);
     render_note();
+  } else if(kind==10) {
+    clear_timeout();s_loading=false;
+    if(id&&strcmp(id->value->cstring,s_current_id)==0&&s_body){if(s_action_menu)window_stack_pop(false);window_stack_pop(true);}
+    s_delete_id[0]=0;load_notes(0);
   } else if(kind==7||kind==8) {
     if(kind==8&&s_pending&&id&&strcmp(id->value->cstring,s_draft_id)!=0){set_status("Earlier note saved · draft kept");return;}
     if(s_pending&&id&&strcmp(id->value->cstring,s_draft_id)==0){clear_timeout();clear_draft();}
     set_status(kind==8?"Saved to vault":"On phone · waiting for Mac");if(kind==8)vibes_short_pulse();
+    if(s_body)text_layer_set_text(s_page_label,kind==8?"Saved to vault":"On phone / waiting for Mac");
+    if(kind==8&&id&&strcmp(id->value->cstring,s_last_append_id)==0){
+      s_last_append_id[0]=0;
+      if(s_body&&strcmp(s_current_id,s_last_append_target)==0){s_loading=true;send_command(2,s_current_id,s_page,NULL);}
+    }
   } else if(kind==5||kind==9) {
     if(kind==9){clear_timeout();s_loading=false;}
     if(text)set_status(text->value->cstring);
@@ -323,13 +373,14 @@ int main(void) {
   if(persist_exists(100)){
     int len=persist_read_int(100);if(len>0&&len<=DRAFT_SIZE&&persist_read_string(101,s_draft_id,sizeof(s_draft_id))>0){
       bool ok=true;for(int i=0;i<len;i+=192){int size=len-i<192?len-i:192;if(persist_read_data(110+i/192,s_draft+i,size)!=size)ok=false;}
+      persist_read_string(102,s_draft_target,sizeof(s_draft_target));
       s_draft[DRAFT_SIZE-1]=0;s_pending=ok&&s_draft[0]&&s_draft_id[0];
     }
   }
   s_main=window_create();window_set_window_handlers(s_main,(WindowHandlers){.load=main_load,.unload=main_unload});window_stack_push(s_main,true);
   app_message_register_inbox_received(inbox);app_message_register_outbox_failed(outbox_failed);app_message_open(2048,1536);
   s_dictation=dictation_session_create(DRAFT_SIZE,dictation_done,NULL);if(s_dictation)dictation_session_enable_confirmation(s_dictation,true);
-  app_event_loop();clear_timeout();if(s_dictation)dictation_session_destroy(s_dictation);if(s_reader)window_destroy(s_reader);window_destroy(s_main);
+  app_event_loop();clear_timeout();if(s_dictation)dictation_session_destroy(s_dictation);if(s_actions)window_destroy(s_actions);if(s_reader)window_destroy(s_reader);window_destroy(s_main);
 #if defined(PBL_PLATFORM_EMERY)
   unload_custom_theme_font();
 #endif

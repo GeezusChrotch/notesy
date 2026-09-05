@@ -55,6 +55,11 @@ test('HTTP authorization and one-time pairing; landing page does not disclose cr
  await fetch(base+'/v1/notes',{headers:{...headers,'X-StoneNotes-Client':'phone'}});
  assert.ok((await (await fetch(base+'/v1/health',{headers})).json()).lastPhoneContact);
  const note=await fetch(base+'/v1/notes',{method:'POST',headers,body:JSON.stringify({requestId:'http_test_1234',text:'From HTTP',vaultId:health.vaultId})});assert.equal(note.status,200);
+ const created=await note.json();
+ const appended=await fetch(base+'/v1/notes/'+created.id+'/append',{method:'POST',headers,body:JSON.stringify({requestId:'http_append_1234',text:'Appended over HTTP',vaultId:health.vaultId})});assert.equal(appended.status,200);
+ const read=await (await fetch(base+'/v1/notes/'+created.id,{headers})).json();assert.match(read.text,/Appended over HTTP/);
+ const removed=await fetch(base+'/v1/notes/'+created.id+'/delete',{method:'POST',headers,body:JSON.stringify({requestId:'http_delete_1234',vaultId:health.vaultId})});assert.equal((await removed.json()).deleted,true);
+ assert.equal((await fetch(base+'/v1/notes/'+created.id,{headers})).status,404);
  assert.equal((await fetch(base+'/v1/notes?offset=-1',{headers})).status,400);
 });
 
@@ -69,4 +74,34 @@ test('filenames lead with local date and safely number repeated titles',t=>{
  s.create({...data,requestId:'filename_test_456'});assert.ok(fs.existsSync(path.join(s.folder,name+' (3).md')));
  assert.equal(s.create(data).duplicate,true);assert.equal(s.list().total,3);
  assert.equal(fs.readFileSync(original,'utf8'),'Written in Obsidian');
+});
+test('append preserves external content and is idempotent across interrupted receipts and later edits',t=>{
+ const f=fixture(t),s=new NoteStore(f.vault,f.state),file=path.join(s.folder,'External.md');fs.writeFileSync(file,'# Existing\nOriginal text');
+ const id=s.list().notes[0].id,data={requestId:'append_trial_123',vaultId:s.vaultId,text:'Extra dictated thought'};
+ s.append(id,data);let body=fs.readFileSync(file,'utf8');assert.ok(body.startsWith('# Existing\nOriginal text\n\nExtra dictated thought'));assert.equal(s.list().total,1);
+ const receiptFile=path.join(s.receipts,fs.readdirSync(s.receipts)[0]),receipt=JSON.parse(fs.readFileSync(receiptFile));receipt.saved=false;fs.writeFileSync(receiptFile,JSON.stringify(receipt));
+ new NoteStore(f.vault,f.state).append(id,data);assert.equal(fs.readFileSync(file,'utf8'),body);
+ assert.ok(!s.read(id).text.includes('stonenotes-append'));
+ fs.appendFileSync(file,'\nEdited in Obsidian');s.append(id,data);assert.equal(fs.readFileSync(file,'utf8'),body+'\nEdited in Obsidian');
+ fs.unlinkSync(file);assert.equal(s.append(id,data).duplicate,true);assert.equal(s.list().total,0);
+ assert.throws(()=>s.append(id,{...data,requestId:'append_other_123'}),/moved or deleted/);
+ assert.equal(s.list().total,0);
+});
+test('append interrupted before completion blocks replay into modified content',t=>{
+ const f=fixture(t),s=new NoteStore(f.vault,f.state);fs.writeFileSync(path.join(s.folder,'Note.md'),'Original');const id=s.list().notes[0].id;
+ const data={requestId:'append_partial_123',vaultId:s.vaultId,text:'More'};s.append(id,data);
+ const receiptFile=path.join(s.receipts,fs.readdirSync(s.receipts)[0]),receipt=JSON.parse(fs.readFileSync(receiptFile));receipt.saved=false;fs.writeFileSync(receiptFile,JSON.stringify(receipt));
+ fs.writeFileSync(path.join(s.folder,'Note.md'),'Original\n\nPartial write or external edit');
+ assert.throws(()=>s.append(id,data),/changed during an interrupted/);
+ assert.equal(fs.readFileSync(path.join(s.folder,'Note.md'),'utf8'),'Original\n\nPartial write or external edit');
+});
+test('delete moves notes to recoverable trash, retries never delete a replacement, and symlinks are blocked',t=>{
+ const f=fixture(t),s=new NoteStore(f.vault,f.state),file=path.join(s.folder,'Keepable.md');fs.writeFileSync(file,'Original content');const id=s.list().notes[0].id;
+ const data={requestId:'delete_trial_123',vaultId:s.vaultId};s.remove(id,data);assert.equal(s.list().total,0);
+ const trash=path.join(s.folder,'.trash');assert.equal(fs.readFileSync(path.join(trash,fs.readdirSync(trash)[0]),'utf8'),'Original content');
+ const receiptFile=path.join(s.receipts,fs.readdirSync(s.receipts)[0]),receipt=JSON.parse(fs.readFileSync(receiptFile));receipt.saved=false;fs.writeFileSync(receiptFile,JSON.stringify(receipt));
+ fs.writeFileSync(file,'Replacement');s.remove(id,data);assert.equal(fs.readFileSync(file,'utf8'),'Replacement');
+ s.remove(id,data);assert.equal(fs.readFileSync(file,'utf8'),'Replacement');
+ fs.renameSync(trash,path.join(f.root,'trash'));fs.symlinkSync(path.join(f.root,'trash'),trash);
+ assert.throws(()=>s.remove(id,{...data,requestId:'delete_trial_other'}),/trash folder/);
 });
