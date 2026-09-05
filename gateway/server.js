@@ -56,7 +56,7 @@ class NoteStore {
       .map(e => {
         const info = fs.lstatSync(path.join(this.folder, e.name));
         const title=e.name.replace(/\.md$/i, '').replace(/ — \d{4}-\d{2}-\d{2}T[\dTZ-]+ [a-f0-9]{12}$/, '');
-        return {id:hash(e.name), title:shortText(title), modified:info.mtimeMs, name:e.name};
+        return {id:hash(e.name), title:shortText(title.replace(/^(\d{4}-\d{2}-\d{2} - \d{1,2})\.(\d{2}[ap]m - )/, '$1:$2')), modified:info.mtimeMs, name:e.name};
       }).sort((a,b) => b.modified-a.modified || a.name.localeCompare(b.name));
   }
   list(offset = 0) {
@@ -94,7 +94,8 @@ class NoteStore {
       const now = new Date(), created = now.toISOString();
       const date = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-');
       const title = shortText(text.trim().split(/[\n.!?]/)[0].replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ').trim(), 70) || 'Dictated note';
-      const base = date + ' - ' + title;
+      const clock = (now.getHours()%12 || 12) + '.' + String(now.getMinutes()).padStart(2,'0') + (now.getHours()<12?'am':'pm');
+      const base = date + ' - ' + clock + ' - ' + title;
       // Reserve names recorded by earlier deliveries, including interrupted writes.
       const reserved = new Set(fs.readdirSync(this.receipts).filter(n => n.endsWith('.json'))
         .map(n => JSON.parse(fs.readFileSync(path.join(this.receipts,n),'utf8')).filename));

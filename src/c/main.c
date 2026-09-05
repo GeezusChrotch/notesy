@@ -11,10 +11,17 @@ static Note s_notes[MAX_NOTES];
 static int s_count, s_next = -1, s_offset, s_page, s_pages;
 static uint32_t s_request;
 static char s_status[160] = "Connecting to phone…";
-static char s_body_text[1024], s_title[128], s_current_id[65];
+static char s_body_text[1024], s_title[128], s_current_id[65], s_heading_title[128];
 static char s_draft[DRAFT_SIZE], s_draft_id[96];
 static bool s_pending, s_ready, s_auto, s_auto_used, s_loading;
 static int s_theme;
+static uint8_t s_theme_font, s_theme_size=24;
+#if defined(PBL_PLATFORM_EMERY)
+static GFont s_custom_theme_font;
+static uint8_t s_custom_theme_font_id=255,s_custom_theme_font_size;
+#endif
+static GColor s_selection_text;
+static bool s_custom_colors;
 static GColor s_background, s_foreground, s_highlight;
 static AppTimer *s_timeout;
 static ClickConfigProvider s_menu_clicks;
@@ -44,14 +51,93 @@ static void load_notes(int offset) {
   s_offset = offset; s_loading = true;
   set_status("Loading notes…"); send_command(1, NULL, offset, NULL);
 }
+#if defined(PBL_PLATFORM_EMERY)
+static void unload_custom_theme_font(void) {
+  if (s_custom_theme_font) {
+    fonts_unload_custom_font(s_custom_theme_font);
+    s_custom_theme_font = NULL;
+  }
+  s_custom_theme_font_id = 255;
+  s_custom_theme_font_size = 0;
+}
+
+static uint8_t custom_size_index(void) {
+  if (s_theme_size <= 14) return 0;
+  if (s_theme_size <= 18) return 1;
+  if (s_theme_size <= 22) return 2;
+  if (s_theme_size <= 26) return 3;
+  return 4;
+}
+
+static GFont time2_theme_font(void) {
+  static const uint32_t font_resources[5][5] = {
+    {RESOURCE_ID_INTER_14, RESOURCE_ID_INTER_18, RESOURCE_ID_INTER_22,
+     RESOURCE_ID_INTER_26, RESOURCE_ID_INTER_30},
+    {RESOURCE_ID_ROBOTO_14, RESOURCE_ID_ROBOTO_18, RESOURCE_ID_ROBOTO_22,
+     RESOURCE_ID_ROBOTO_26, RESOURCE_ID_ROBOTO_30},
+    {RESOURCE_ID_OPEN_SANS_14, RESOURCE_ID_OPEN_SANS_18, RESOURCE_ID_OPEN_SANS_22,
+     RESOURCE_ID_OPEN_SANS_26, RESOURCE_ID_OPEN_SANS_30},
+    {RESOURCE_ID_MONTSERRAT_14, RESOURCE_ID_MONTSERRAT_18, RESOURCE_ID_MONTSERRAT_22,
+     RESOURCE_ID_MONTSERRAT_26, RESOURCE_ID_MONTSERRAT_30},
+    {RESOURCE_ID_POPPINS_14, RESOURCE_ID_POPPINS_18, RESOURCE_ID_POPPINS_22,
+     RESOURCE_ID_POPPINS_26, RESOURCE_ID_POPPINS_30},
+  };
+  uint8_t family = s_theme_font - 5;
+  uint8_t size_index = custom_size_index();
+  uint8_t actual_size = (uint8_t[]){14, 18, 22, 26, 30}[size_index];
+  if (s_custom_theme_font && s_custom_theme_font_id == s_theme_font &&
+      s_custom_theme_font_size == actual_size) {
+    return s_custom_theme_font;
+  }
+  unload_custom_theme_font();
+  s_custom_theme_font = fonts_load_custom_font(
+    resource_get_handle(font_resources[family][size_index]));
+  s_custom_theme_font_id = s_theme_font;
+  s_custom_theme_font_size = actual_size;
+  return s_custom_theme_font ? s_custom_theme_font :
+    fonts_get_system_font(FONT_KEY_GOTHIC_24);
+}
+#endif
+
+static GFont theme_title_font(void) {
+#if defined(PBL_PLATFORM_EMERY)
+  if (s_theme_font >= 5 && s_theme_font <= 9) return time2_theme_font();
+  unload_custom_theme_font();
+#endif
+  if (s_theme_font == 2) return fonts_get_system_font(FONT_KEY_ROBOTO_CONDENSED_21);
+  if (s_theme_font == 3) return fonts_get_system_font(FONT_KEY_DROID_SERIF_28_BOLD);
+  if (s_theme_font == 4) return fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
+  if (s_theme_font == 1) {
+    if (s_theme_size <= 14) return fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
+    if (s_theme_size <= 18) return fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+    if (s_theme_size >= 28) return fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
+    return fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+  }
+  if (s_theme_size <= 14) return fonts_get_system_font(FONT_KEY_GOTHIC_14);
+  if (s_theme_size <= 18) return fonts_get_system_font(FONT_KEY_GOTHIC_18);
+  if (s_theme_size >= 28) return fonts_get_system_font(FONT_KEY_GOTHIC_28);
+  return fonts_get_system_font(FONT_KEY_GOTHIC_24);
+}
+
+
 static void apply_theme(void) {
+  if (!s_custom_colors) {
   s_background = s_theme == 1 ? GColorDarkGreen : s_theme == 2 ? GColorOxfordBlue : GColorWhite;
   s_foreground = s_theme == 0 ? GColorBlack : GColorWhite;
   s_highlight = s_theme == 1 ? GColorMintGreen : s_theme == 2 ? GColorVividCerulean : GColorBlack;
+  s_selection_text=s_theme==0?GColorWhite:GColorBlack;
+  }
+  GFont font=theme_title_font();
   window_set_background_color(s_main, s_background);
   menu_layer_set_normal_colors(s_menu, s_background, s_foreground);
-  menu_layer_set_highlight_colors(s_menu, s_highlight, s_theme == 0 ? GColorWhite : GColorBlack);
+  menu_layer_set_highlight_colors(s_menu, s_highlight, s_selection_text);
+  menu_layer_reload_data(s_menu);
   if (s_body) {
+    text_layer_set_font(s_body,font);
+    text_layer_set_font(s_heading,font);
+    GRect bounds=layer_get_bounds(window_get_root_layer(s_reader));
+    layer_set_frame(text_layer_get_layer(s_heading),GRect(4,0,bounds.size.w-8,s_theme_size+10));
+    scroll_layer_set_frame(s_scroll,GRect(0,s_theme_size+12,bounds.size.w,bounds.size.h-s_theme_size-33));
     window_set_background_color(s_reader, s_background);
     TextLayer *layers[] = {s_body, s_heading, s_page_label};
     for (unsigned i=0; i<3; i++) { text_layer_set_background_color(layers[i], s_background); text_layer_set_text_color(layers[i], s_foreground); }
@@ -92,13 +178,28 @@ static void dictate(void) {
   else set_status("Dictation requires a microphone and phone");
 }
 static uint16_t row_count(MenuLayer *menu, uint16_t section, void *context) { return 1+s_count+(s_next>=0?1:0)+1; }
-static int16_t row_height(MenuLayer *menu, MenuIndex *index, void *context) { return index->row == 0 ? 64 : 48; }
+static int16_t row_height(MenuLayer *menu, MenuIndex *index, void *context) { return index->row == 0 ? 70 : s_theme_size+32; }
+static const char *note_title(const char *full, char *date, size_t size) {
+  if(strlen(full)>13 && full[4]=='-' && full[7]=='-' && full[10]==' ') {
+    const char *split=strstr(full," - ");
+    if(split){const char *second=strstr(split+3," - ");if(second && second-split>=8 && second-split<=11 && split[3]>='0' && split[3]<='9' && second[-1]=='m' && (second[-2]=='a'||second[-2]=='p'))split=second;
+      if(date)snprintf(date,size,"%.*s",(int)(split-full),full);
+      return split+3;}
+  }
+  if(date&&size)date[0]=0;
+  return full;
+}
 static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *index, void *context) {
-  int row = index->row;
-  if (row == 0) menu_cell_basic_draw(ctx, cell, s_pending ? "Retry draft" : "New note", s_status, NULL);
-  else if (row <= s_count) menu_cell_basic_draw(ctx, cell, s_notes[row-1].title, NULL, NULL);
-  else if (s_next>=0 && row == s_count+1) menu_cell_basic_draw(ctx, cell, "More notes", "Next 15", NULL);
-  else menu_cell_basic_draw(ctx, cell, "Refresh", "Newest notes", NULL);
+  int row=index->row; const char *title,*subtitle=NULL;
+  if(row==0){title=s_pending?"Retry draft":"New note";subtitle=s_status;}
+  else if(row<=s_count){static char date[40];title=note_title(s_notes[row-1].title,date,sizeof(date));if(date[0])subtitle=date;}
+  else if(s_next>=0&&row==s_count+1)title="More notes";
+  else title="Refresh";
+  GRect bounds=layer_get_bounds(cell);
+  graphics_context_set_text_color(ctx,menu_cell_layer_is_highlighted(cell)?s_selection_text:s_foreground);
+  int h=s_theme_size+8;
+  graphics_draw_text(ctx,title,theme_title_font(),GRect(6,subtitle?0:(bounds.size.h-h)/2-2,bounds.size.w-12,h),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
+  if(subtitle)graphics_draw_text(ctx,subtitle,fonts_get_system_font(FONT_KEY_GOTHIC_14),GRect(6,h,bounds.size.w-12,bounds.size.h-h),GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);
 }
 static void render_note(void) {
   GRect bounds = layer_get_bounds(window_get_root_layer(s_reader));
@@ -108,7 +209,8 @@ static void render_note(void) {
   layer_set_frame(text_layer_get_layer(s_body), GRect(4, 0, bounds.size.w-8, size.h+10));
   scroll_layer_set_content_size(s_scroll, GSize(bounds.size.w, size.h+10));
   scroll_layer_set_content_offset(s_scroll, GPointZero, false);
-  text_layer_set_text(s_heading, s_title);
+  snprintf(s_heading_title,sizeof(s_heading_title),"%s",note_title(s_title,NULL,0));
+  text_layer_set_text(s_heading, s_heading_title);
   static char label[64];
   snprintf(label, sizeof(label), "%d/%d · Select next", s_page+1, s_pages);
   text_layer_set_text(s_page_label, s_pages>1 ? label : "Hold Select: new note");
@@ -134,8 +236,8 @@ static void reader_unload(Window *window) {
 }
 static void reader_load(Window *window) {
   GRect bounds=layer_get_bounds(window_get_root_layer(window));
-  s_heading=text_layer_create(GRect(4,0,bounds.size.w-8,30)); text_layer_set_font(s_heading,fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
-  s_scroll=scroll_layer_create(GRect(0,32,bounds.size.w,bounds.size.h-53));
+  s_heading=text_layer_create(GRect(4,0,bounds.size.w-8,s_theme_size+10)); text_layer_set_font(s_heading,fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+  s_scroll=scroll_layer_create(GRect(0,s_theme_size+12,bounds.size.w,bounds.size.h-s_theme_size-33));
   s_body=text_layer_create(GRect(4,0,bounds.size.w-8,1500)); text_layer_set_font(s_body,fonts_get_system_font(FONT_KEY_GOTHIC_24));
   text_layer_set_overflow_mode(s_body,GTextOverflowModeWordWrap);
   s_page_label=text_layer_create(GRect(4,bounds.size.h-20,bounds.size.w-8,20)); text_layer_set_font(s_page_label,fonts_get_system_font(FONT_KEY_GOTHIC_14));
@@ -170,7 +272,12 @@ static void inbox(DictionaryIterator *iter, void *context) {
   Tuple *text=dict_find(iter,MESSAGE_KEY_TEXT), *id=dict_find(iter,MESSAGE_KEY_NOTE_ID), *title=dict_find(iter,MESSAGE_KEY_TITLE);
   if(kind==6) {
     s_ready=true;Tuple *theme=dict_find(iter,MESSAGE_KEY_THEME),*aut=dict_find(iter,MESSAGE_KEY_AUTO);
-    if(theme){s_theme=theme->value->int32;apply_theme();}s_auto=aut&&aut->value->int32;
+    if(theme)s_theme=theme->value->int32;
+    Tuple *bg=dict_find(iter,MESSAGE_KEY_THEME_BACKGROUND),*fg=dict_find(iter,MESSAGE_KEY_THEME_TEXT),*sel=dict_find(iter,MESSAGE_KEY_THEME_SELECTION),*st=dict_find(iter,MESSAGE_KEY_THEME_SELECTION_TEXT),*font=dict_find(iter,MESSAGE_KEY_THEME_FONT),*size=dict_find(iter,MESSAGE_KEY_THEME_SIZE);
+    if(bg&&fg&&sel&&st){s_custom_colors=true;s_background.argb=bg->value->uint8;s_foreground.argb=fg->value->uint8;s_highlight.argb=sel->value->uint8;s_selection_text.argb=st->value->uint8;}
+    if(font)s_theme_font=font->value->uint8<=9?font->value->uint8:0;
+    if(size)s_theme_size=size->value->uint8>=14&&size->value->uint8<=30?size->value->uint8:24;
+    apply_theme();s_auto=aut&&aut->value->int32;
     if(s_pending)retry_draft();else if(s_auto&&!s_auto_used){s_auto_used=true;dictate();}else load_notes(0);
   } else if(kind==1) {
     Tuple *count=dict_find(iter,MESSAGE_KEY_COUNT),*next=dict_find(iter,MESSAGE_KEY_PAGE);
@@ -223,4 +330,7 @@ int main(void) {
   app_message_register_inbox_received(inbox);app_message_register_outbox_failed(outbox_failed);app_message_open(2048,1536);
   s_dictation=dictation_session_create(DRAFT_SIZE,dictation_done,NULL);if(s_dictation)dictation_session_enable_confirmation(s_dictation,true);
   app_event_loop();clear_timeout();if(s_dictation)dictation_session_destroy(s_dictation);if(s_reader)window_destroy(s_reader);window_destroy(s_main);
+#if defined(PBL_PLATFORM_EMERY)
+  unload_custom_theme_font();
+#endif
 }

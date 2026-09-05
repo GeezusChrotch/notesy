@@ -58,4 +58,6 @@ provides the loopback-only filesystem API bundled by the Mac connector.
 The watch UUID is stable. Public packaging includes no personal build or preconfigured token.
 See `PRIVACY.md` for storage and transcription details.
 
-New dictated files use the Mac’s local date followed by the first sentence, such as `2026-09-09 - This is the dictated note.md`. Duplicate titles on the same day receive `(2)`, `(3)`, and so on. Delivery identifiers stay in metadata and local receipts for retry protection. Existing notes retain their filenames.
+New dictated files use the Mac’s local date and readable time followed by the first sentence, such as `2026-09-09 - 5.32pm - This is the dictated note.md`. Duplicate titles within the same minute receive `(2)`, `(3)`, and so on. Delivery identifiers stay in metadata and local receipts for retry protection. Existing notes retain their filenames.
+
+Appearance settings use Pome’s five presets and custom background, text, and selection colors. Time 2 bundles Inter, Roboto, Open Sans, Montserrat, and Poppins in 14, 18, 22, 26, and 30 pixel sizes. Pebble Time uses Pome’s system-font choices and their supported sizes. The selected font applies to menu titles and note reading; hints remain small. Font licenses are in `resources/fonts/licenses`.

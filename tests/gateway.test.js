@@ -61,7 +61,8 @@ test('HTTP authorization and one-time pairing; landing page does not disclose cr
 test('filenames lead with local date and safely number repeated titles',t=>{
  const f=fixture(t),s=new NoteStore(f.vault,f.state),now=new Date();
  const date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
- const name=date+' - This is the dictated note';
+ const clock=(now.getHours()%12||12)+'.'+String(now.getMinutes()).padStart(2,'0')+(now.getHours()<12?'am':'pm');
+ const name=date+' - '+clock+' - This is the dictated note';
  const original=path.join(s.folder,name+'.md');fs.writeFileSync(original,'Written in Obsidian');
  const data={requestId:'filename_test_123',text:'This is the dictated note. More detail.',vaultId:s.vaultId};
  s.create(data);assert.ok(fs.existsSync(path.join(s.folder,name+' (2).md')));
