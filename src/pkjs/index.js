@@ -34,8 +34,8 @@ function request(c, method, route, body, callback) {
 }
 function error(text,seq){send({TYPE:9,TEXT:text,REQUEST:seq||0});}
 try {
-  delivery=new Delivery(localStorage,function(c,note,cb){request(c,'POST',note.api===2?(note.targetId?'/v2/items/'+encodeURIComponent(note.targetId)+'/append':'/v2/notes'):(note.targetId?'/v1/notes/'+encodeURIComponent(note.targetId)+'/append':'/v1/notes'),note,cb);},function(state,id,message){
-    send({TYPE:state==='saved'?8:state==='queued'?7:5,NOTE_ID:id,TEXT:state==='saved'?'Saved to vault':state==='queued'?'On phone · waiting for Mac':message||'Waiting for Mac'});
+  delivery=new Delivery(localStorage,function(c,note,cb){request(c,'POST',note.api===2?(note.targetId?'/v2/items/'+encodeURIComponent(note.targetId)+'/append':'/v2/notes'):(note.targetId?'/v1/notes/'+encodeURIComponent(note.targetId)+'/append':'/v1/notes'),note,cb);},function(state,id,message,targetId){
+    send({TYPE:state==='saved'?8:state==='queued'?7:5,NOTE_ID:id,TARGET_ID:targetId||'',TEXT:state==='saved'?'Saved to vault':state==='queued'?'On phone · waiting for Mac':message||'Waiting for Mac'});
     if(state==='saved')setTimeout(pump,400);
   });
 } catch(e) { error('Phone storage could not load pending notes. Your watch draft is kept.'); }

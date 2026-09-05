@@ -10,7 +10,8 @@ function Delivery(storage, send, notify) {
     var api=location.api===2?2:1,folderId=location.folderId||'',vaultId=api===2?location.vaultId:config&&config.vaultId;
     if(api===2&&(!/^[a-f0-9]{64}$/.test(vaultId)||!/^[a-f0-9]{64}$/.test(folderId)))throw Error('Reload the vault before dictating.');
     if(targetId&&!/^[a-f0-9]{64}$/.test(targetId))throw Error('Invalid append destination.');
-    if (state.done.indexOf(id) >= 0) { notify('saved', id); return; }
+    var completed=state.done.filter(function(d){return (typeof d==='string'?d:d.id)===id;})[0];
+    if (completed) { notify('saved', id, null, completed.targetId||''); return; }
     var existing=state.pending.filter(function(p) { return p.id === id; })[0];
     if (existing) { if(existing.text!==text||(existing.targetId||'')!==targetId||(existing.api||1)!==api||(existing.folderId||'')!==folderId)throw Error('Draft ID conflict. Your original pending note was preserved.');notify('queued', id); return; }
     if (!config || !config.vaultId) throw Error('Pair Notesy in phone Settings first.');
@@ -27,9 +28,9 @@ function Delivery(storage, send, notify) {
       busy = false;
       if (error || !value || !value.saved) { notify('waiting', note.id, error && error.message); return; }
       try {
-        commit({pending:state.pending.filter(function(p) { return p.id !== note.id; }),done:state.done.concat([note.id]).slice(-128)});
+        commit({pending:state.pending.filter(function(p) { return p.id !== note.id; }),done:state.done.concat([{id:note.id,targetId:value.id||note.targetId||''}]).slice(-128)});
       } catch (e) { notify('waiting',note.id,'Phone storage is full. Delivery will be checked again.'); return; }
-      notify('saved', note.id);
+      notify('saved', note.id, null, value.id||note.targetId||'');
     });
   };
   this.pending = function() { return state.pending.slice(); };

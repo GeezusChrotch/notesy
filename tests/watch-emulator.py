@@ -16,6 +16,7 @@ fixture=subprocess.Popen(['node',str(ROOT/'tests/emulator-fixture.js')],stdout=s
 info=json.loads(fixture.stdout.readline());base='http://127.0.0.1:'+str(info['port'])
 pebble=PebbleConnection(ManagedEmulatorTransport('emery'));pebble.connect();pebble.run_async()
 service=AppMessageService(pebble);app=uuid.UUID('b9270b92-5e0e-491b-9993-165f849d7250')
+saved_captures=[];hold_receipts=[False]
 incoming=queue.Queue();calls=[];failures=[];acks=set();lock=threading.Lock();done=threading.Event()
 service.register_handler('appmessage',lambda tx,u,data:incoming.put(data) if u==app else None)
 service.register_handler('ack',lambda tx,u:acks.add(tx))
@@ -62,7 +63,8 @@ def worker():
     body={'requestId':m[3],'text':m[5],'vaultId':m[26],'folderId':m[18]}
     send({1:7,3:m[3]})
     v=http('/v2/items/'+m[17]+'/append' if m.get(17) else '/v2/notes',body)
-    assert v['saved'];send({1:8,3:m[3]})
+    assert v['saved'];saved_captures.append((m,v))
+    if not hold_receipts[0]:send({1:8,3:m[3],17:v['id']})
   except Exception as e:failures.append(str(e));print('FAIL',e,flush=True)
   finally:incoming.task_done()
 threading.Thread(target=worker,daemon=True).start()
@@ -74,7 +76,7 @@ def settings(bindings=buttons,marquee=30):
  send({1:6,27:marquee,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,bindings)),11:255,12:192,13:192,14:255,15:5,16:22});settle()
 def click(name,long=False):
  value={'up':QemuButton.Button.Up,'down':QemuButton.Button.Down,'select':QemuButton.Button.Select,'back':QemuButton.Button.Back}[name]
- send_data_to_qemu(pebble.transport,QemuButton(state=value));time.sleep(.75 if long else .06);send_data_to_qemu(pebble.transport,QemuButton(state=0));settle()
+ send_data_to_qemu(pebble.transport,QemuButton(state=value));time.sleep(1.0 if long else .2);send_data_to_qemu(pebble.transport,QemuButton(state=0));settle()
 def double_back():
  for _ in range(2):
   send_data_to_qemu(pebble.transport,QemuButton(state=QemuButton.Button.Back));time.sleep(.06);send_data_to_qemu(pebble.transport,QemuButton(state=0));time.sleep(.08)
@@ -129,7 +131,7 @@ def marquee_checks():
  print('PASS: Off stays still, Slow and Very fast animate selected long titles, short titles stay still',flush=True)
  # A large theme makes an Actions label overflow too.
  settings(marquee=90);send({1:6,27:90,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,buttons)),15:5,16:30});settle();double_back()
- click('down');click('down');a=frame();shot('marquee-actions-start.png');time.sleep(1.6);b=frame();shot('marquee-actions-later.png');assert a!=b,'Long action should marquee'
+ click('down');click('down');click('down');click('down');a=frame();shot('marquee-actions-start.png');time.sleep(1.6);b=frame();shot('marquee-actions-later.png');assert a!=b,'Long action should marquee'
  click('back');print('PASS: long Actions title scrolls and Back returns normally',flush=True)
 
 def voice_checks():
@@ -146,7 +148,7 @@ def voice_checks():
   if not cancel_search[0]:threading.Timer(.7,finish).start()
  voice.register_handler('session_setup',setup)
  if os.environ.get('WATCH_TEST_SEARCH_ONLY'):
-  settings();double_back();click('down');click('down');click('select');time.sleep(1.5);click('select');time.sleep(1.2);settle()
+  settings();double_back();click('down');click('down');click('down');click('select');time.sleep(1.5);click('select');time.sleep(1.2);settle()
   assert calls[-1][0]==7 and calls[-1][5]=='project plna';assert not any(m[0]==3 for m in calls)
   shot('search-results.png');click('select');assert calls[-1][0]==2 and calls[-1][3]==info['note'];shot('search-reader.png')
   custom=buttons.copy();custom[11]=8;settings(custom);search_words[:]=['note'];click('down',True);time.sleep(1.5);click('select');time.sleep(1.2);settle();assert calls[-1][0]==7
@@ -159,7 +161,7 @@ def voice_checks():
   click('down');click('select');assert calls[-1][0]==2
   print('PASS: Actions search, fuzzy result opening, reader/main search bindings, Back restoration and cancelled search with zero note captures',flush=True)
   return
- settings();click('select');time.sleep(1.5);shot('vault-dictation-confirm.png')
+ settings();click('select');click('select');time.sleep(1.5);shot('vault-dictation-confirm.png')
  print('Simulated transcription reached the watch confirmation screen',flush=True)
  confirm='select'
  click(confirm);assert [m for m in calls if m[0]==3][-1][18]==info['root']
@@ -167,7 +169,7 @@ def voice_checks():
  print('PASS: dictated root note carries root destination',flush=True)
  settings();listing=http('/v2/browse');row=next(i for i,n in enumerate(listing['items']) if n['id']==info['projects'])+1
  for _ in range(row):click('down')
- click('select');click('select');time.sleep(1.5);click(confirm)
+ click('select');click('select');click('select');time.sleep(1.5);click(confirm)
  capture=[m for m in calls if m[0]==3][-1];assert capture[18]==info['projects'] and not capture.get(17)
  print('PASS: dictated folder note carries nested destination',flush=True)
  settings();listing=http('/v2/browse?folder='+info['projects']);row=next(i for i,n in enumerate(listing['items']) if n['id']==info['note'])+1
@@ -186,8 +188,64 @@ def voice_checks():
  assert [m for m in calls if m[0]==3][-1][17]==info['note']
  print('PASS: configured Append in browser targets the selected note',flush=True)
 
+def stitch_checks():
+ from libpebble2.services.voice import VoiceService,SetupResult,TranscriptionResult
+ class FixtureVoice(VoiceService):
+  def _handle_audio_frame(self,session_id,frame):pass
+ voice=FixtureVoice(pebble);sessions=[];results=[];automatic=[2]
+ def wait_for(predicate,label):
+  end=time.time()+10
+  while not predicate():
+   assert time.time()<end,(label,len(sessions),len(results),len(saved_captures))
+   time.sleep(.1)
+ def ready(number):
+  wait_for(lambda:len(results)>=number,'transcription ready');time.sleep(3)
+ def setup(u,encoder):
+  sessions.append(u);number=len(sessions);voice.send_session_setup_result(SetupResult.Success,u)
+  def finish():
+   voice.send_stop_audio();voice.send_dictation_result(TranscriptionResult.Success,sentences=[['Section',str(number)]],app_uuid=u);results.append(number)
+  if number<=automatic[0]:threading.Timer(.7,finish).start()
+ voice.register_handler('session_setup',setup)
+ if not os.environ.get('WATCH_TEST_STITCH_STOP_ONLY'):
+  settings();click('select');shot('capture-modes.png');click('down');click('select');ready(1)
+  click('select');ready(2)
+  first=saved_captures[0];send({1:8,3:first[0][3],17:'f'*64});time.sleep(.5);assert len(sessions)==2
+  click('select');wait_for(lambda:len(sessions)==3,'third listening session');time.sleep(.5);click('back');time.sleep(1);settle()
+  assert len(saved_captures)==2 and not saved_captures[0][0].get(17)
+  target=saved_captures[0][1]['id'];assert saved_captures[1][0][17]==target
+  note=http('/v2/notes/'+target)['text'];assert 'Section 1' in note and 'Section 2' in note
+  before=len(sessions);time.sleep(1);assert len(sessions)==before
+  print('PASS: Stitch creates once, appends the next accepted section, ignores stale receipts and stops with Back',flush=True)
+  settings();listing=http('/v2/browse');row=next(i for i,n in enumerate(listing['items']) if n['id']==target)+1
+  for _ in range(row):click('down')
+  click('select');click('select');shot('append-capture-modes.png');click('down')
+  automatic[0]=len(sessions)+2;count=len(results);click('select');ready(count+1);shot('stitch-append-first.png')
+  click('select');ready(count+2);shot('stitch-append-second.png');click('select')
+  wait_for(lambda:len(sessions)==automatic[0]+1,'append third listening');time.sleep(.5);click('back');settle()
+  assert len(saved_captures)==4 and all(m[17]==target for m,v in saved_captures[2:])
+  print('PASS: Append Stitch keeps both sections in the open note',flush=True)
+  return
+ else:
+  settings();target=info['note'];listing=http('/v2/browse');row=next(i for i,n in enumerate(listing['items']) if n['id']==target)+1
+  for _ in range(row):click('down')
+  click('select')
+ automatic[0]=len(sessions)+1;before=len(sessions);count=len(results);click('select',True);ready(count+1);click('select');time.sleep(1)
+ assert len(sessions)==before+1 and saved_captures[-1][0][17]==target
+ print('PASS: Quick Dictate append stays a single recording',flush=True)
+ custom=buttons.copy();custom[11]=10;settings(custom);hold_receipts[0]=True
+ automatic[0]=len(sessions)+1;before=len(sessions);count=len(results);click('down',True);ready(count+1);click('select');wait_for(lambda:len(saved_captures)==2,'held section captured')
+ assert len(sessions)==before+1
+ click('back');last=saved_captures[-1];send({1:8,3:last[0][3],17:last[1]['id']});time.sleep(1)
+ assert len(sessions)==before+1 and last[0][17]==target
+ print('PASS: Stitch shortcut 10 works; stopping while saving prevents a late receipt from restarting dictation',flush=True)
+ hold_receipts[0]=False;click('back');settings();automatic[0]=len(sessions)+1;before=len(sessions);count=len(results)
+ click('select');click('select');ready(count+1);click('select');time.sleep(1)
+ assert len(sessions)==before+1 and not saved_captures[-1][0].get(17)
+ print('PASS: main Quick Dictate creates one note with one recording',flush=True)
+
 try:
- if os.environ.get('WATCH_TEST_SCROLL_ONLY'):scroll_checks()
+ if os.environ.get('WATCH_TEST_STITCH_ONLY') or os.environ.get('WATCH_TEST_STITCH_STOP_ONLY'):stitch_checks()
+ elif os.environ.get('WATCH_TEST_SCROLL_ONLY'):scroll_checks()
  elif os.environ.get('WATCH_TEST_RICH_ONLY'):rich_checks()
  elif os.environ.get('WATCH_TEST_MARQUEE_ONLY'):marquee_checks()
  elif os.environ.get('WATCH_TEST_DICTATION_ONLY') or os.environ.get('WATCH_TEST_SEARCH_ONLY'):voice_checks()
@@ -210,7 +268,7 @@ try:
    print('PASS: root pins, folders, root notes, nested Back, and forward/backward list and note paging',flush=True)
   for index in range(6):
    custom=buttons.copy();custom[index]=4;settings(custom);double_back()
-   for _ in range(8):click('down')
+   for _ in range(10):click('down')
    click('select')
    previous=len([m for m in calls if m[0]==6]);click(['up','select','down'][index%3],index>=3)
    assert len([m for m in calls if m[0]==6])==previous+1,('Main binding failed',index)
@@ -232,6 +290,9 @@ try:
   print('PASS: immediate one-step delete and hardware Back actions fallback',flush=True)
 
 except Exception:
- shot('vault-test-failure.png');print('Commands at failure',[(m[0],m.get(6),m.get(21)) for m in calls[-8:]],flush=True);raise
+ print('Commands at failure',[(m[0],m.get(6),m.get(21)) for m in calls[-8:]],flush=True)
+ try:shot('vault-test-failure.png')
+ except Exception as screenshot_error:print('Failure screenshot unavailable:',type(screenshot_error).__name__,flush=True)
+ raise
 finally:
  done.set();service.shutdown();fixture.terminate();fixture.wait(timeout=5)

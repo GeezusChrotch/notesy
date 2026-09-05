@@ -20,16 +20,16 @@ No personal vault, account, network address or credential is embedded in the sha
 | Gesture | Main / folder view | Open note |
 | --- | --- | --- |
 | Up / Down press | Move through entries | Scroll text |
-| Select press | Open folder or note; select New note to dictate | Actions menu |
+| Select press | Open folder or note; select New note for Quick Dictate / Stitch | Actions menu |
 | Up long press | Pin / unpin selected item | Pin / unpin note |
-| Select long press | Actions menu | Append dictation |
-| Down long press | New note in current folder | No action |
+| Select long press | Actions menu | Quick Dictate (append) |
+| Down long press | Quick Dictate (new note) | No action |
 | Back press | Previous location; exit at root | Return to browser |
 | Back double press | Actions menu | Actions menu |
 | Back long press | Exit app (watch OS) | Exit app (watch OS) |
 
 Phone Settings → Button shortcuts lets users assign **all six press/long-press gestures separately
-for each view**: normal navigation, new note, append, delete, pin/unpin, actions, no action, refresh or dictate to search.
+for each view**: normal navigation, Quick Dictate or Stitch for a new note or append, delete, pin/unpin, actions, no action, refresh or dictate to search.
 Double-pressing Back always opens Actions, including movement controls if normal buttons were reassigned.
 There are no Back or Next/Previous page menu entries.
 
@@ -39,7 +39,13 @@ loads the adjacent batch automatically. Folder listings are stable while paging,
 change in Obsidian. Use Refresh in Actions to see changes; listings expire after 30 minutes.
 Notes scroll normally and fetch more text at the edge of the loaded chunk.
 
-**New note** saves in the folder being viewed. When assigned in note view, it saves alongside the
+**New note** offers **Quick Dictate** (one recording) and **Stitch** (successive recordings joined
+to one note). Each recording lasts up to 15 seconds. Stitch saves each accepted section before
+listening again; Back finishes, keeping earlier sections. Both modes also work for Append, and
+connection failures stop recording while retaining the pending section. See the
+[dictation guide](docs/USER_GUIDE.md#quick-dictate-and-stitch).
+
+New notes save in the folder being viewed. When assigned in note view, it saves alongside the
 open note. **Append** targets the selected or open note. **Delete note** immediately moves that
 note into `.trash` inside its containing folder, without a second confirmation. Folders cannot
 be deleted from the watch. Finder’s Command-Shift-Period reveals `.trash` for recovery.
@@ -162,6 +168,8 @@ python3 scripts/emulator-fixture.py
 pebble install --emulator emery build/Notesy-fixture.pbw
 python tests/watch-emulator.py
 WATCH_TEST_DICTATION_ONLY=1 python tests/watch-emulator.py
+WATCH_TEST_STITCH_ONLY=1 python tests/watch-emulator.py
+WATCH_TEST_STITCH_STOP_ONLY=1 python tests/watch-emulator.py
 WATCH_TEST_SEARCH_ONLY=1 python tests/watch-emulator.py
 WATCH_TEST_RICH_ONLY=1 python tests/watch-emulator.py
 ```

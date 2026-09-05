@@ -89,3 +89,14 @@ test('converted image transport sends bounded byte chunks and ignores superseded
  for(const i of [0,1]){p.requests[i].status=200;p.requests[i].responseText=JSON.stringify({width:20,height:15,data:data.toString('base64')});p.requests[i].onload();}
  const chunks=p.messages.filter(m=>m.TYPE===17);assert.deepEqual(chunks.map(m=>m.PIXELS.length),[512,88]);assert.ok(chunks.every(m=>m.REQUEST===81));assert.deepEqual(chunks.flatMap(m=>Array.from(m.PIXELS)),Array.from(data));assert.ok(p.messages.some(m=>m.TYPE===18));
 });
+test('Stitch receives the saved destination and both Stitch shortcuts survive settings',()=>{
+ const p=phone(),target='e'.repeat(64),buttons=[9,0,0,4,5,1,0,10,0,4,2,6];
+ p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,buttons}))});
+ assert.equal(p.messages.filter(m=>m.TYPE===6).at(-1).BUTTONS,buttons.join(','));
+ p.handlers.appmessage({payload:{COMMAND:3,NOTE_ID:'stitch_phone_first',TEXT:'First section'}});
+ assert.equal(p.messages.find(m=>m.TYPE===7).TARGET_ID,'');
+ const req=p.requests[0];req.status=200;req.responseText=JSON.stringify({saved:true,id:target});req.onload();
+ assert.equal(p.messages.find(m=>m.TYPE===8).TARGET_ID,target);
+ p.handlers.appmessage({payload:{COMMAND:3,NOTE_ID:'stitch_phone_first',TEXT:'First section'}});
+ assert.equal(p.requests.length,1);assert.equal(p.messages.at(-1).TARGET_ID,target);
+});

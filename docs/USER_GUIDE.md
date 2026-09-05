@@ -6,7 +6,8 @@ The home page shows pinned items first, then folders and root notes. Up/Down mov
 list; Select opens an item; Back returns to the previous location. Lists load more automatically
 in both directions as you scroll. **Actions → Refresh** picks up changes made in Obsidian.
 
-**New note** creates a file in the folder you are viewing. **Append** adds dictation to the
+**New note** opens a choice of **Quick Dictate** or **Stitch** in the folder you are viewing.
+**Append: Quick Dictate** and **Append: Stitch** add dictation to the
 selected or open note. New note, when assigned in note view, creates a separate note alongside
 it. Drawing source cannot be appended to; create a note alongside a drawing instead.
 
@@ -15,6 +16,24 @@ Back always opens Actions. The watch OS reserves long-press Back to exit the app
 
 New files lead with the local date and readable time, followed by the first sentence. Existing
 filenames are preserved. Retry receipts prevent a delayed connection from saving the same capture twice.
+
+## Quick Dictate and Stitch
+
+**Quick Dictate** records one section. **Stitch** joins multiple recordings into the same note.
+Pebble allows up to 15 seconds per recording. Accept each transcription with Select; Stitch saves
+that section, gives a short vibration, then starts listening for the next one. There is a brief
+saving/transcription gap between sections. Sections are appended in order as separate paragraphs.
+
+Press Back to leave dictation and finish. On the transcription review screen, Pebble may first
+return to listening; press Back again to exit. Back also stops Stitch while a section is saving.
+Accepted sections stay saved; cancelling the current recording does not remove earlier sections.
+If the connection fails, Stitch stops and keeps the last accepted section for delivery. Reopen
+the note and choose **Append: Stitch** to continue once the connection is restored. Reopening
+the app retries a pending draft but never resumes the microphone automatically for Stitch.
+
+Both modes are available in Actions and as button shortcuts for creating or appending. Existing
+new-note and append shortcuts remain Quick Dictate; automatic dictation on launch is also Quick
+Dictate. The New note row shows the two choices before recording.
 
 ## Read, check and view
 
@@ -56,7 +75,7 @@ Phone settings offer Pome's theme presets, custom colors, font sizes and fonts s
 watch. **Long menu titles** controls marquee speed from Off through Very fast.
 
 Assign short and long presses for Up, Select and Down separately in browser and note views.
-Options include navigation, actions, create, append, delete, pin, refresh and dictated search.
+Options include navigation, actions, Quick Dictate or Stitch for create/append, delete, pin, refresh and dictated search.
 If you reassign navigation, double Back opens Actions with movement controls.
 
 ## When the Mac is unavailable

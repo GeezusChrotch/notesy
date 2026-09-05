@@ -32,3 +32,15 @@ test('vault browser queue preserves folders, vault identity and old pending deli
  d.enqueue('another-draft','Keep destination',config,'',{api:2,folderId:folder,vaultId:config.browserId});
  d.pump({...config,browserId:'e'.repeat(64)});assert.equal(events.length,2);assert.equal(d.pending().length,1);
 });
+test('saved note identity survives phone restart and duplicate receipt requests for Stitch',()=>{
+ const s=storage(),events=[],target='f'.repeat(64);
+ let d=new Delivery(s,(_c,_n,cb)=>cb(null,{saved:true,id:target}),(...a)=>events.push(a));
+ d.enqueue('stitch-first','First section',config);d.pump(config);
+ assert.equal(events.at(-1)[3],target);
+ d=new Delivery(s,()=>assert.fail('must not create twice'),(...a)=>events.push(a));
+ d.enqueue('stitch-first','First section',config);assert.equal(events.at(-1)[3],target);
+ // Retain compatibility with completions recorded by older Notesy versions.
+ s.setItem('stonenotes.delivery',JSON.stringify({pending:[],done:['old-draft']}));
+ d=new Delivery(s,()=>assert.fail('old saved draft'),(...a)=>events.push(a));d.enqueue('old-draft','Old note',config);
+ assert.equal(events.at(-1)[0],'saved');assert.equal(events.at(-1)[3],'');
+});
