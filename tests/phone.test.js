@@ -24,7 +24,7 @@ test('capture is acknowledged after phone persistence and saved only after the M
 });
 test('settings shows connection progress, success and errors with browser window.status semantics',()=>{
  const p=phone();p.handlers.showConfiguration();const html=decodeURIComponent(p.urls[0].split(',').slice(1).join(','));
- const elements={};for(const id of ['buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
+ const elements={};for(const id of ['marquee-speed','buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
  for(let i=0;i<12;i++)elements['button-'+i]={value:String(require('../src/pkjs/buttons').normalize()[i])};
  let request;const context={document:{getElementById:id=>elements[id]},location:{href:''},XMLHttpRequest:function(){request=this;this.open=()=>{};this.setRequestHeader=()=>{};this.send=()=>{};}};
  let browserStatus='';Object.defineProperty(context,'status',{get:()=>browserStatus,set:v=>{browserStatus=String(v);},configurable:true});
@@ -32,8 +32,8 @@ test('settings shows connection progress, success and errors with browser window
  elements.pair.value=JSON.stringify(config);elements.test.onclick();assert.equal(elements.status.textContent,'Connecting…');
  request.status=200;request.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId});request.onload();assert.equal(elements.status.textContent,'Connected to your vault.');
  elements['appearance-preset'].value='2';elements['appearance-preset'].onchange();
- elements.save.onclick();assert.match(context.location.href,/^pebblejs:\/\/close#/);
- const saved=JSON.parse(decodeURIComponent(context.location.href.split('#')[1]));assert.equal(saved.appearance.background,'#000055');assert.equal(saved.appearance.font,'roboto-condensed');assert.equal(saved.gatewayToken,config.gatewayToken);
+ elements['marquee-speed'].value='60';elements.save.onclick();assert.match(context.location.href,/^pebblejs:\/\/close#/);
+ const saved=JSON.parse(decodeURIComponent(context.location.href.split('#')[1]));assert.equal(saved.marqueeSpeed,60);assert.equal(saved.appearance.background,'#000055');assert.equal(saved.appearance.font,'roboto-condensed');assert.equal(saved.gatewayToken,config.gatewayToken);
  elements.test.onclick();request.onerror();assert.match(elements.status.textContent,/Cannot reach/);
  elements.pair.value='invalid';elements.test.onclick();assert.ok(elements.status.textContent.length>0);assert.notEqual(elements.status.textContent,'Connecting…');
 });
@@ -67,4 +67,11 @@ test('search is read-only, carries result locations and ignores superseded queri
  assert.match(p.requests[1].url,/v2\/search\?q=caf%C3%A9%20%26%20plan/);
  for(const i of [1,0]){const req=p.requests[i];req.status=200;req.responseText=JSON.stringify({items:[{id:'d'.repeat(64),title:i?'Current':'Stale',location:'Projects/Work'}],offset:0,total:1,snapshot:'abc'});req.onload();}
  assert.equal(p.messages.find(m=>m.TITLE==='Current').TEXT,'Projects/Work');assert.ok(!p.messages.some(m=>m.TITLE==='Stale'||m.TYPE===7||m.TYPE===8));assert.equal(p.data['stonenotes.delivery'],before);assert.equal(require('../src/pkjs/buttons').normalize(c.buttons)[11],8);
+});
+
+test('marquee preference defaults safely and persists every supported speed including Off',()=>{
+ for(const [value,expected] of [[undefined,30],[0,0],[15,15],[30,30],[60,60],[90,90],[-1,30],[10000,30]]){
+  const p=phone();p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,marqueeSpeed:value}))});assert.equal(p.messages.find(m=>m.TYPE===6).MARQUEE_SPEED,expected);
+  p.handlers.showConfiguration();assert.match(decodeURIComponent(p.urls[0]),/Long menu titles/);
+ }
 });

@@ -56,7 +56,8 @@
       "TOTAL": 23,
       "BUTTONS": 24,
       "API": 25,
-      "VAULT_ID": 26
+      "VAULT_ID": 26,
+      "MARQUEE_SPEED": 27
     },
     "resources": {
       "media": [

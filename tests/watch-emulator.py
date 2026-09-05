@@ -60,8 +60,8 @@ def settle():
  time.sleep(.25);incoming.join();time.sleep(.2)
  assert not failures,failures
 buttons=[0,0,0,4,5,1,0,0,0,4,2,6]
-def settings(bindings=buttons):
- send({1:6,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,bindings)),11:255,12:192,13:192,14:255,15:5,16:22});settle()
+def settings(bindings=buttons,marquee=30):
+ send({1:6,27:marquee,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,bindings)),11:255,12:192,13:192,14:255,15:5,16:22});settle()
 def click(name,long=False):
  value={'up':QemuButton.Button.Up,'down':QemuButton.Button.Down,'select':QemuButton.Button.Select,'back':QemuButton.Button.Back}[name]
  send_data_to_qemu(pebble.transport,QemuButton(state=value));time.sleep(.75 if long else .06);send_data_to_qemu(pebble.transport,QemuButton(state=0));settle()
@@ -71,6 +71,23 @@ def double_back():
  settle()
 def shot(name):
  png.from_array(Screenshot(pebble).grab_image(),'RGB;8').save(str(ROOT/'build'/name))
+def marquee_checks():
+ def frame():return tuple(tuple(row) for row in Screenshot(pebble).grab_image())
+ def rows(speed):
+  settings(marquee=speed);seq=calls[-1][2]
+  send({1:1,2:seq,7:2,6:0,23:2,4:'Vault',22:''})
+  send({1:2,2:seq,8:0,3:info['note'],4:'This is a very long note title that scrolls across the selected menu row',20:0,21:0})
+  send({1:2,2:seq,8:1,3:info['projects'],4:'Short',20:1,21:0});send({1:3,2:seq});settle();click('down')
+ for speed in [0,15,90]:
+  rows(speed);a=frame();shot('marquee-'+str(speed)+'-start.png');time.sleep(2);b=frame();shot('marquee-'+str(speed)+'-later.png')
+  assert (a==b)==(speed==0),('Marquee did not match speed',speed)
+  click('down');a=frame();time.sleep(1.3);assert frame()==a,'Short title should remain still'
+ print('PASS: Off stays still, Slow and Very fast animate selected long titles, short titles stay still',flush=True)
+ # A large theme makes an Actions label overflow too.
+ settings(marquee=90);send({1:6,27:90,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,buttons)),15:5,16:30});settle();double_back()
+ click('down');click('down');a=frame();shot('marquee-actions-start.png');time.sleep(1.6);b=frame();shot('marquee-actions-later.png');assert a!=b,'Long action should marquee'
+ click('back');print('PASS: long Actions title scrolls and Back returns normally',flush=True)
+
 def voice_checks():
  from libpebble2.services.voice import VoiceService,SetupResult,TranscriptionResult
  class FixtureVoice(VoiceService):
@@ -126,7 +143,8 @@ def voice_checks():
  print('PASS: configured Append in browser targets the selected note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_DICTATION_ONLY') or os.environ.get('WATCH_TEST_SEARCH_ONLY'):voice_checks()
+ if os.environ.get('WATCH_TEST_MARQUEE_ONLY'):marquee_checks()
+ elif os.environ.get('WATCH_TEST_DICTATION_ONLY') or os.environ.get('WATCH_TEST_SEARCH_ONLY'):voice_checks()
  else:
   if not os.environ.get('WATCH_TEST_BINDINGS_ONLY'):
    settings();assert calls[-1][0]==1;shot('vault-browser-root.png')

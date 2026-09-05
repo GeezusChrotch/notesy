@@ -43,6 +43,55 @@ static bool s_custom_colors;
 static GColor s_background, s_foreground, s_highlight;
 static AppTimer *s_timeout;
 
+static AppTimer *s_marquee_timer;
+static int s_marquee_offset,s_marquee_max,s_marquee_fraction;
+static uint8_t s_marquee_speed=30;
+static bool s_marquee_at_end;
+static char s_marquee_title[128];
+static MenuLayer *marquee_menu(void){
+  Window *top=window_stack_get_top_window();
+  if(s_actions&&top==s_actions)return s_action_menu;
+  return top==s_main&&!s_body?s_menu:NULL;
+}
+static void marquee_stop(void){if(s_marquee_timer){app_timer_cancel(s_marquee_timer);s_marquee_timer=NULL;}}
+static void marquee_reset(void){
+  marquee_stop();s_marquee_offset=0;s_marquee_max=0;s_marquee_fraction=0;s_marquee_at_end=false;s_marquee_title[0]=0;
+  MenuLayer *menu=marquee_menu();if(menu)layer_mark_dirty(menu_layer_get_layer(menu));
+}
+static void marquee_tick(void *context){
+  s_marquee_timer=NULL;MenuLayer *menu=marquee_menu();
+  if(!menu||!s_marquee_speed||s_marquee_max<=0)return;
+  uint32_t delay=50;
+  if(s_marquee_at_end){s_marquee_offset=0;s_marquee_fraction=0;s_marquee_at_end=false;delay=900;}
+  else{
+    s_marquee_fraction+=s_marquee_speed;s_marquee_offset+=s_marquee_fraction/20;s_marquee_fraction%=20;
+    if(s_marquee_offset>=s_marquee_max){s_marquee_offset=s_marquee_max;s_marquee_at_end=true;delay=900;}
+  }
+  layer_mark_dirty(menu_layer_get_layer(menu));s_marquee_timer=app_timer_register(delay,marquee_tick,NULL);
+}
+static void marquee_selection(MenuLayer *menu,MenuIndex next,MenuIndex previous,void *context){marquee_reset();}
+static void marquee_appear(Window *window){marquee_reset();}
+static void marquee_disappear(Window *window){marquee_stop();}
+static void draw_menu_title(GContext *ctx,const Layer *cell,const char *title,GFont font,GRect box){
+  bool selected=menu_cell_layer_is_highlighted(cell);
+  if(selected&&s_marquee_speed&&marquee_menu()){
+    if(strcmp(s_marquee_title,title)!=0){marquee_reset();snprintf(s_marquee_title,sizeof(s_marquee_title),"%s",title);}
+    GSize size=graphics_text_layout_get_content_size(title,font,GRect(0,0,6000,box.size.h),GTextOverflowModeFill,GTextAlignmentLeft);
+    s_marquee_max=size.w>box.size.w?size.w-box.size.w:0;
+    if(s_marquee_max>0){
+      if(!s_marquee_timer)s_marquee_timer=app_timer_register(900,marquee_tick,NULL);
+      graphics_draw_text(ctx,title,font,GRect(box.origin.x-s_marquee_offset,box.origin.y,size.w+4,box.size.h),GTextOverflowModeFill,GTextAlignmentLeft,NULL);
+      graphics_context_set_fill_color(ctx,s_highlight);
+      int width=layer_get_bounds(cell).size.w;
+      graphics_fill_rect(ctx,GRect(0,box.origin.y,box.origin.x,box.size.h),0,GCornerNone);
+      graphics_fill_rect(ctx,GRect(box.origin.x+box.size.w,box.origin.y,width-box.origin.x-box.size.w,box.size.h),0,GCornerNone);
+      return;
+    }
+    marquee_stop();s_marquee_offset=0;s_marquee_fraction=0;s_marquee_at_end=false;
+  }
+  graphics_draw_text(ctx,title,font,box,GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
+}
+
 
 static void set_status(const char *text) {
   snprintf(s_status, sizeof(s_status), "%s", text);
@@ -246,7 +295,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *index, void *c
   GRect bounds=layer_get_bounds(cell);
   graphics_context_set_text_color(ctx,menu_cell_layer_is_highlighted(cell)?s_selection_text:s_foreground);
   int h=s_theme_size+8;
-  graphics_draw_text(ctx,title,theme_title_font(),GRect(6,subtitle?0:(bounds.size.h-h)/2-2,bounds.size.w-12,h),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
+  draw_menu_title(ctx,cell,title,theme_title_font(),GRect(6,subtitle?0:(bounds.size.h-h)/2-2,bounds.size.w-12,h));
   if(subtitle)graphics_draw_text(ctx,subtitle,fonts_get_system_font(FONT_KEY_GOTHIC_14),GRect(6,h,bounds.size.w-12,bounds.size.h-h),GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);
 }
 static void render_note(void) {
@@ -329,13 +378,13 @@ static void action_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *c
   int action=action_code(index->row);Note *n=selected_note();bool pinned=s_body?s_note_pinned:(n&&n->pinned);
   const char *title=action==11?"Dictate to search":action==8?"Open selected":action==1?"New note":action==2?"Append dictation":action==4?(pinned?"Unpin":"Pin to main page"):action==3?"Delete note":action==7?"Refresh":action==9?"Move up":"Move down";
   GRect bounds=layer_get_bounds(cell);graphics_context_set_text_color(ctx,menu_cell_layer_is_highlighted(cell)?s_selection_text:s_foreground);
-  graphics_draw_text(ctx,title,theme_title_font(),GRect(6,4,bounds.size.w-12,bounds.size.h-4),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
+  draw_menu_title(ctx,cell,title,theme_title_font(),GRect(6,4,bounds.size.w-12,bounds.size.h-4));
 }
 static int16_t action_height(MenuLayer *menu,MenuIndex *index,void *context){return s_theme_size+18;}
 static void action_selected(MenuLayer *menu,MenuIndex *index,void *context){int action=action_code(index->row);window_stack_pop(true);perform(action);}
 static void actions_load(Window *window){
   s_action_menu=menu_layer_create(layer_get_bounds(window_get_root_layer(window)));
-  menu_layer_set_callbacks(s_action_menu,NULL,(MenuLayerCallbacks){.get_num_rows=action_rows,.get_cell_height=action_height,.draw_row=action_draw,.select_click=action_selected});
+  menu_layer_set_callbacks(s_action_menu,NULL,(MenuLayerCallbacks){.get_num_rows=action_rows,.get_cell_height=action_height,.draw_row=action_draw,.select_click=action_selected,.selection_changed=marquee_selection});
   menu_layer_set_normal_colors(s_action_menu,s_background,s_foreground);menu_layer_set_highlight_colors(s_action_menu,s_highlight,s_selection_text);
   menu_layer_set_click_config_onto_window(s_action_menu,window);layer_add_child(window_get_root_layer(window),menu_layer_get_layer(s_action_menu));
 }
@@ -343,7 +392,7 @@ static void actions_unload(Window *window){menu_layer_destroy(s_action_menu);s_a
 static void open_actions(ClickRecognizerRef recognizer,void *context){
   if(s_action_menu)return;
   if(s_actions)window_destroy(s_actions);
-  s_actions=window_create();window_set_window_handlers(s_actions,(WindowHandlers){.load=actions_load,.unload=actions_unload});window_stack_push(s_actions,true);
+  s_actions=window_create();window_set_window_handlers(s_actions,(WindowHandlers){.load=actions_load,.unload=actions_unload,.appear=marquee_appear,.disappear=marquee_disappear});window_stack_push(s_actions,true);
 }
 static void reader_unload(Window *window) {
   s_loading=false; ++s_request; clear_timeout();
@@ -407,6 +456,8 @@ static void inbox(DictionaryIterator *iter, void *context) {
   if(request&&request->value->uint32!=0&&request->value->uint32!=s_request)return;
   Tuple *text=dict_find(iter,MESSAGE_KEY_TEXT), *id=dict_find(iter,MESSAGE_KEY_NOTE_ID), *title=dict_find(iter,MESSAGE_KEY_TITLE);
   if(kind==6) {
+    Tuple *speed=dict_find(iter,MESSAGE_KEY_MARQUEE_SPEED);
+    if(speed){int value=speed->value->int32;s_marquee_speed=(value==0||value==15||value==30||value==60||value==90)?value:30;}marquee_reset();
     Tuple *api=dict_find(iter,MESSAGE_KEY_API),*vault=dict_find(iter,MESSAGE_KEY_VAULT_ID),*root=dict_find(iter,MESSAGE_KEY_FOLDER_ID),*buttons=dict_find(iter,MESSAGE_KEY_BUTTONS);
     s_browser=api&&api->value->int32==2;
     if(vault){if(strcmp(s_vault,vault->value->cstring)!=0){s_folder[0]=0;s_snapshot[0]=0;s_depth=0;s_search=false;s_query[0]=0;}snprintf(s_vault,sizeof(s_vault),"%s",vault->value->cstring);}
@@ -434,7 +485,7 @@ static void inbox(DictionaryIterator *iter, void *context) {
     clear_timeout();s_loading=false;
     bool complete=s_incoming_count>=0;for(int i=0;i<s_incoming_count;i++){if(!s_incoming[i].id[0])complete=false;}
     if(!complete){set_status("List interrupted · double Back to refresh");return;}
-    memcpy(s_notes,s_incoming,sizeof(s_notes));s_count=s_incoming_count;s_offset=s_incoming_offset;s_total=s_incoming_total;
+    marquee_reset();memcpy(s_notes,s_incoming,sizeof(s_notes));s_count=s_incoming_count;s_offset=s_incoming_offset;s_total=s_incoming_total;
     snprintf(s_snapshot,sizeof(s_snapshot),"%s",s_incoming_snapshot);
     set_status(s_search&&!s_total?"No matches · search again":s_folder_title);
     int row=s_restore_row;if(row>s_count)row=s_count;if(row<0)row=0;
@@ -476,7 +527,7 @@ static void inbox(DictionaryIterator *iter, void *context) {
 static void outbox_failed(DictionaryIterator *iter, AppMessageResult reason, void *context) { clear_timeout();s_loading=false;set_status(s_pending?"Draft kept · select to retry":"Phone unavailable · retry"); }
 static void main_load(Window *window) {
   s_menu=menu_layer_create(layer_get_bounds(window_get_root_layer(window)));
-  menu_layer_set_callbacks(s_menu,NULL,(MenuLayerCallbacks){.get_num_rows=row_count,.get_cell_height=row_height,.draw_row=draw_row});
+  menu_layer_set_callbacks(s_menu,NULL,(MenuLayerCallbacks){.get_num_rows=row_count,.get_cell_height=row_height,.draw_row=draw_row,.selection_changed=marquee_selection});
   window_set_click_config_provider(window,main_clicks);
   layer_add_child(window_get_root_layer(window),menu_layer_get_layer(s_menu));apply_theme();
 }
@@ -491,10 +542,10 @@ int main(void) {
       s_draft[DRAFT_SIZE-1]=0;s_pending=ok&&s_draft[0]&&s_draft_id[0];
     }
   }
-  s_main=window_create();window_set_window_handlers(s_main,(WindowHandlers){.load=main_load,.unload=main_unload});window_stack_push(s_main,true);
+  s_main=window_create();window_set_window_handlers(s_main,(WindowHandlers){.load=main_load,.unload=main_unload,.appear=marquee_appear,.disappear=marquee_disappear});window_stack_push(s_main,true);
   app_message_register_inbox_received(inbox);app_message_register_outbox_failed(outbox_failed);app_message_open(2048,1536);
   s_dictation=dictation_session_create(DRAFT_SIZE,dictation_done,NULL);if(s_dictation)dictation_session_enable_confirmation(s_dictation,true);
-  app_event_loop();clear_timeout();if(s_dictation)dictation_session_destroy(s_dictation);if(s_actions)window_destroy(s_actions);if(s_reader)window_destroy(s_reader);window_destroy(s_main);
+  app_event_loop();marquee_stop();clear_timeout();if(s_dictation)dictation_session_destroy(s_dictation);if(s_actions)window_destroy(s_actions);if(s_reader)window_destroy(s_reader);window_destroy(s_main);
 #if defined(PBL_PLATFORM_EMERY)
   unload_custom_theme_font();
 #endif

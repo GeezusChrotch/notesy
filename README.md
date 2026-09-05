@@ -71,7 +71,9 @@ Phone Settings exposes pending text for recovery after an intentional destinatio
 Appearance uses Pome’s five presets and custom background, text and selection colors. Time 2
 includes Inter, Roboto, Open Sans, Montserrat and Poppins at 14, 18, 22, 26 and 30 pixels.
 Pebble Time uses Pome’s system-font options and supported sizes. The chosen font applies to
-browser entries, actions and reading; hints remain small. See `resources/fonts/licenses`.
+browser entries, actions and reading; hints remain small. Selected long menu titles scroll after a
+brief pause, including search results and Actions. Phone Settings → Appearance → Long menu titles
+offers Off, Slow, Normal (default), Fast and Very fast; unselected and short titles stay still. See `resources/fonts/licenses`.
 
 New files use the Mac’s local date, readable time and first sentence:
 `2026-09-09 - 5.32pm - This is the dictated note.md`. The watch displays `5:32pm`.
