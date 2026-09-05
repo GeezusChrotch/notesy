@@ -57,3 +57,5 @@ provides the loopback-only filesystem API bundled by the Mac connector.
 
 The watch UUID is stable. Public packaging includes no personal build or preconfigured token.
 See `PRIVACY.md` for storage and transcription details.
+
+New dictated files use the Mac’s local date followed by the first sentence, such as `2026-09-09 - This is the dictated note.md`. Duplicate titles on the same day receive `(2)`, `(3)`, and so on. Delivery identifiers stay in metadata and local receipts for retry protection. Existing notes retain their filenames.

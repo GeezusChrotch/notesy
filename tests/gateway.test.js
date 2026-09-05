@@ -57,3 +57,15 @@ test('HTTP authorization and one-time pairing; landing page does not disclose cr
  const note=await fetch(base+'/v1/notes',{method:'POST',headers,body:JSON.stringify({requestId:'http_test_1234',text:'From HTTP',vaultId:health.vaultId})});assert.equal(note.status,200);
  assert.equal((await fetch(base+'/v1/notes?offset=-1',{headers})).status,400);
 });
+
+test('filenames lead with local date and safely number repeated titles',t=>{
+ const f=fixture(t),s=new NoteStore(f.vault,f.state),now=new Date();
+ const date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+ const name=date+' - This is the dictated note';
+ const original=path.join(s.folder,name+'.md');fs.writeFileSync(original,'Written in Obsidian');
+ const data={requestId:'filename_test_123',text:'This is the dictated note. More detail.',vaultId:s.vaultId};
+ s.create(data);assert.ok(fs.existsSync(path.join(s.folder,name+' (2).md')));
+ s.create({...data,requestId:'filename_test_456'});assert.ok(fs.existsSync(path.join(s.folder,name+' (3).md')));
+ assert.equal(s.create(data).duplicate,true);assert.equal(s.list().total,3);
+ assert.equal(fs.readFileSync(original,'utf8'),'Written in Obsidian');
+});

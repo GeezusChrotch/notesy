@@ -91,9 +91,16 @@ class NoteStore {
       if (receipt.digest !== digest) throw new Fault(409, 'This delivery ID already belongs to another note.');
       if (receipt.saved) return {saved:true, id:hash(receipt.filename), title:receipt.title, duplicate:true};
     } else {
-      const created = new Date().toISOString();
+      const now = new Date(), created = now.toISOString();
+      const date = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-');
       const title = shortText(text.trim().split(/[\n.!?]/)[0].replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ').trim(), 70) || 'Dictated note';
-      const filename = title + ' — ' + created.replace(/[:.]/g, '-') + ' ' + hash(requestId).slice(0,12) + '.md';
+      const base = date + ' - ' + title;
+      // Reserve names recorded by earlier deliveries, including interrupted writes.
+      const reserved = new Set(fs.readdirSync(this.receipts).filter(n => n.endsWith('.json'))
+        .map(n => JSON.parse(fs.readFileSync(path.join(this.receipts,n),'utf8')).filename));
+      let filename = base + '.md', suffix = 2;
+      while (reserved.has(filename) || fs.existsSync(path.join(this.folder, filename)))
+        filename = base + ' (' + suffix++ + ').md';
       receipt = {created, filename, title, digest, saved:false};
       atomicJSON(receiptFile, receipt);
     }
