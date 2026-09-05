@@ -4,7 +4,7 @@
 typedef struct { char id[65]; char title[112]; } Note;
 static Window *s_main, *s_reader, *s_actions;
 static MenuLayer *s_action_menu;
-static bool s_confirm_delete, s_scroll_to_end;
+static bool s_scroll_to_end;
 static char s_capture_target[65],s_draft_target[65],s_last_append_id[96],s_last_append_target[65],s_delete_id[96];
 static MenuLayer *s_menu;
 static ScrollLayer *s_scroll;
@@ -252,19 +252,16 @@ static void reader_clicks(void *context) {
 static uint16_t action_rows(MenuLayer *menu,uint16_t section,void *context){return 2;}
 static void action_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *context){
   const char *names[]={"Append dictation","Delete note"};
-  if(s_confirm_delete)menu_cell_basic_draw(ctx,cell,index->row?"Move to trash":"Cancel",index->row?"Removes this note":s_heading_title,NULL);
-  else menu_cell_basic_draw(ctx,cell,names[index->row],index->row==0?"Or hold Select in note":NULL,NULL);
+  menu_cell_basic_draw(ctx,cell,names[index->row],index->row==0?"Or hold Select in note":NULL,NULL);
 }
 static void action_selected(MenuLayer *menu,MenuIndex *index,void *context){
   int row=index->row;
-  if(s_confirm_delete){
-    if(row==0){window_stack_pop(true);return;}
+  if(row==1){
     if(s_loading)return;
     if(!s_delete_id[0])snprintf(s_delete_id,sizeof(s_delete_id),"delete-%lu-%lu",(unsigned long)time(NULL),(unsigned long)rand());
     window_stack_pop(true);s_loading=true;send_command(5,s_current_id,0,s_delete_id);
     text_layer_set_text(s_page_label,"Deleting…");return;
   }
-  if(row==1){s_confirm_delete=true;menu_layer_reload_data(s_action_menu);menu_layer_set_selected_index(s_action_menu,MenuIndex(0,0),MenuRowAlignTop,false);return;}
   window_stack_pop(true);
   if(row==0)dictate();
 }
@@ -278,7 +275,7 @@ static void actions_unload(Window *window){menu_layer_destroy(s_action_menu);s_a
 static void open_actions(ClickRecognizerRef recognizer, void *context){
   if(s_loading)return;
   if(s_actions)window_destroy(s_actions);
-  s_confirm_delete=false;s_actions=window_create();window_set_window_handlers(s_actions,(WindowHandlers){.load=actions_load,.unload=actions_unload});window_stack_push(s_actions,true);
+  s_actions=window_create();window_set_window_handlers(s_actions,(WindowHandlers){.load=actions_load,.unload=actions_unload});window_stack_push(s_actions,true);
 }
 static void reader_unload(Window *window) {
   s_loading=false; ++s_request; clear_timeout();

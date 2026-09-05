@@ -10,7 +10,7 @@ the author's vault, account, network, or credentials is embedded in the shared a
 
 - **Select New note:** dictate and confirm. Hold Select in the menu to capture from any row.
 - **Up / Down:** browse notes or scroll the open note.
-- **Select a note:** read it. Hold Select appends dictation to that note. Up/Down scroll through the note, loading more text as needed. Select opens actions: append or delete. Use the physical Back button to leave. Deletion requires confirmation and moves the note to `Pebble/.trash`.
+- **Select a note:** read it. Hold Select appends dictation to that note. Up/Down scroll through the note, loading more text as needed. Select opens actions: append or delete. Use the physical Back button to leave. Selecting Delete note immediately moves the note to `Pebble/.trash`.
 - **Back:** return to the list. **More notes** advances the list in batches of 15.
 - **Refresh**, or hold Down in the menu: return to the newest notes.
 
@@ -37,7 +37,7 @@ private network. The connector requires macOS 14+ and bundles its runtime.
 - This release reads immediate `.md` children of `Pebble`, up to 1 MB each. It renders simple
   Markdown as text, with placeholders for images and embeds. Plugin-generated views, attachments,
   and nested folders are not supported. Displayed characters depend on the watch's system fonts.
-- Existing notes can be read, appended to by dictation, and moved to trash after confirmation. New-note creation is available only from the main page.
+- Existing notes can be read, appended to by dictation, and moved to trash by selecting Delete note. New-note creation is available only from the main page.
 - A pending note remains bound to its original Mac and vault. Phone settings exposes the text
   for recovery if you intentionally change that destination.
 
