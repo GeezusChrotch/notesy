@@ -51,6 +51,29 @@ Search returns up to 100 ranked matches. Scans stop after 60,000 entries or roug
 limited scans are labeled Partial matches. Body search skips files above 1 MB. Search results
 remain stable for 30 minutes; Search again or Refresh performs a new scan. The Mac must be awake.
 
+## Hidden folders, tasks and pictures
+
+Phone Settings → Hidden folders → Load folders shows a folder tree. Select any folders to hide,
+expand subfolders as needed, then Apply hidden folders. Hidden choices apply to browsing, pins
+and search, including descendants; reopen Notesy or refresh its list afterward. Files are not
+moved. Pictures in hidden attachment folders can still appear in visible notes.
+
+Notes with Markdown tasks or embedded pictures open as a content menu. Select a checkbox to
+check or uncheck it in Obsidian; only the marker changes. Normal text, line endings and metadata
+are preserved. If Obsidian edited the note since it loaded, reopen before changing a task.
+Custom note-button assignments still apply; keep Select as Normal navigation to toggle tasks.
+Task changes require the Mac connection and show saved only after acknowledgement.
+
+Images load inline when their menu row is selected; Select retries a failed image. Local PNG,
+JPEG, GIF (first frame), WebP, HEIC, TIFF, BMP and SVG files are converted by macOS into Pebble's
+64-color palette, up to 120 × 100 on Time or 176 × 150 on Time 2. Pictures are scaled to fit,
+so small text in large images may be difficult to read. Wikilinks, Markdown image links and
+short unique attachment names work. Remote web images and non-image embeds are not downloaded.
+
+Native `.excalidraw` files and Obsidian `.excalidraw.md` drawings, including compressed JSON,
+render locally using Excalidraw's export library. Drawings and their embedded raster images stay
+on your Mac. Source drawings are never rewritten; use New note alongside a drawing for dictation.
+
 ## Setup and upgrades
 
 Choose your vault in the Mac connector, start Notesy, start its private connection, and select
@@ -86,8 +109,10 @@ and receipts; invisible append markers prevent duplicate retries.
   service. Captures are limited to 767 UTF-8 bytes; longer text is rejected, never truncated.
 - The Mac must be awake for reading and delivery. Pending captures retry while the phone runs
   Notesy, including when reopened; this is not continuous iPhone background execution.
-- Regular Markdown notes up to 1 MB are supported. Simple Markdown renders as text; images,
-  attachments, embeds and plugin-generated views are not rendered. Font glyph coverage varies.
+- Regular Markdown notes and drawing source files up to 1 MB are supported. Image attachments
+  have a 20 MB file / 32 megapixel decode limit. Drawings allow up to 10,000 elements; very complex
+  scenes may time out. Plugin-generated views and custom task status symbols are not interactive.
+  Font glyph coverage varies.
 - Hidden paths and symbolic links are excluded. Browsing does not recursively scan the vault:
   visited folders and search results are indexed. A folder can contain up to 60,000 visible entries; navigation
   history supports 24 opened folders. Both directions of paging use bounded watch memory.
@@ -97,6 +122,9 @@ and receipts; invisible append markers prevent duplicate retries.
 ## Development
 
 ```sh
+npm ci --prefix renderer
+node renderer/build.mjs
+swiftc -gnone -framework AppKit -framework WebKit renderer/ImageHelper.swift -o renderer/dist/notesy-image-helper
 npm test
 npm run check
 npm run package
@@ -105,7 +133,9 @@ npm run package
 Native C handles the watch UI, buttons and draft persistence. PebbleKit JS handles settings,
 transport and durable delivery. `gateway/server.js` hosts the loopback API;
 `gateway/browser.js` implements vault navigation, pins and explicit destinations while the v1
-API remains compatible with old queued notes. The Mac build bundles the server, browser and search modules.
+API remains compatible with old queued notes. The Mac build bundles the server modules, isolated image helper, Excalidraw renderer and fonts.
+Renderer versions and dependency overrides are pinned in renderer/package-lock.json. The renderer
+blocks HTTP(S) requests and only receives the selected local image or drawing.
 
 Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-0.1.0.pbw` for distribution; the latter
 omits SDK source maps. `tests/watch-emulator.py` exercises the compiled C app against the disposable
@@ -120,6 +150,7 @@ pebble install --emulator emery build/Notesy-fixture.pbw
 python tests/watch-emulator.py
 WATCH_TEST_DICTATION_ONLY=1 python tests/watch-emulator.py
 WATCH_TEST_SEARCH_ONLY=1 python tests/watch-emulator.py
+WATCH_TEST_RICH_ONLY=1 python tests/watch-emulator.py
 ```
 
 Use only the emulator fixture for those commands. The dictation check supplies simulated

@@ -24,7 +24,7 @@ test('capture is acknowledged after phone persistence and saved only after the M
 });
 test('settings shows connection progress, success and errors with browser window.status semantics',()=>{
  const p=phone();p.handlers.showConfiguration();const html=decodeURIComponent(p.urls[0].split(',').slice(1).join(','));
- const elements={};for(const id of ['marquee-speed','buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
+ const elements={};for(const id of ['folder-filter','folder-tree','folder-status','folders-load','folders-apply','marquee-speed','buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
  for(let i=0;i<12;i++)elements['button-'+i]={value:String(require('../src/pkjs/buttons').normalize()[i])};
  let request;const context={document:{getElementById:id=>elements[id]},location:{href:''},XMLHttpRequest:function(){request=this;this.open=()=>{};this.setRequestHeader=()=>{};this.send=()=>{};}};
  let browserStatus='';Object.defineProperty(context,'status',{get:()=>browserStatus,set:v=>{browserStatus=String(v);},configurable:true});
@@ -74,4 +74,18 @@ test('marquee preference defaults safely and persists every supported speed incl
   const p=phone();p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,marqueeSpeed:value}))});assert.equal(p.messages.find(m=>m.TYPE===6).MARQUEE_SPEED,expected);
   p.handlers.showConfiguration();assert.match(decodeURIComponent(p.urls[0]),/Long menu titles/);
  }
+});
+test('rich notes deliver checkbox rows and task updates require an acknowledged Mac result',()=>{
+ const p=phone(),c={...config,browserId:'b'.repeat(64),root:'c'.repeat(64)},id='d'.repeat(64);p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify(c))});
+ p.handlers.appmessage({payload:{COMMAND:2,API:3,REQUEST:70,NOTE_ID:id,PAGE:1}});assert.match(p.requests[0].url,/v3\/notes\/.*page=1/);
+ p.requests[0].status=200;p.requests[0].responseText=JSON.stringify({rich:true,title:'Tasks',parent:c.root,revision:'e'.repeat(64),offset:15,total:20,blocks:[{kind:'task',id:'125',text:'Task',checked:false}]});p.requests[0].onload();assert.equal(p.messages.find(m=>m.TYPE===13).CHECKED,0);assert.ok(p.messages.some(m=>m.TYPE===14));
+ p.handlers.appmessage({payload:{COMMAND:8,REQUEST:71,NOTE_ID:id,ITEM_ID:'125',CHECKED:1,REVISION:'e'.repeat(64),TEXT:'task_phone_123'}});assert.ok(!p.messages.some(m=>m.TYPE===15));assert.equal(JSON.parse(p.requests[1].body).checked,true);
+ p.requests[1].status=200;p.requests[1].responseText=JSON.stringify({saved:true,taskId:'125',checked:true,revision:'f'.repeat(64)});p.requests[1].onload();assert.equal(p.messages.find(m=>m.TYPE===15).CHECKED,1);
+});
+test('converted image transport sends bounded byte chunks and ignores superseded responses',()=>{
+ const p=phone();p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,browserId:'b'.repeat(64)}))});
+ for(let seq=80;seq<82;seq++)p.handlers.appmessage({payload:{COMMAND:9,REQUEST:seq,NOTE_ID:'c'.repeat(64),INDEX:0,REVISION:'d'.repeat(64),WIDTH:120,HEIGHT:100}});
+ const data=Buffer.from(Array.from({length:600},(_,i)=>i%2?255:1));
+ for(const i of [0,1]){p.requests[i].status=200;p.requests[i].responseText=JSON.stringify({width:20,height:15,data:data.toString('base64')});p.requests[i].onload();}
+ const chunks=p.messages.filter(m=>m.TYPE===17);assert.deepEqual(chunks.map(m=>m.PIXELS.length),[512,88]);assert.ok(chunks.every(m=>m.REQUEST===81));assert.deepEqual(chunks.flatMap(m=>Array.from(m.PIXELS)),Array.from(data));assert.ok(p.messages.some(m=>m.TYPE===18));
 });

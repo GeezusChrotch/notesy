@@ -26,3 +26,14 @@ loopback. The connector can configure a Tailscale Serve route; it never enables 
 access. Closing the Mac window keeps the service available. Quitting the app stops Notesy.
 
 Notesy is an independent project and is not affiliated with Obsidian, Pebble, or Tailscale.
+
+Folder hiding is a display preference, not an access-control boundary: embedded images in hidden
+attachment folders still render, and queued captures retain their original destination. Checkbox
+changes send the task position, requested state and note revision through the paired private
+connection. A local receipt makes task retries idempotent; only the checkbox byte is changed.
+
+Images and Excalidraw drawings are rendered locally in a separate macOS helper. Its WebKit
+renderer blocks HTTP(S) requests and uses bundled libraries and fonts. Local image data may be
+written briefly into a private temporary directory for conversion and is removed afterward. Up
+to 12 converted previews remain in the gateway's memory cache. No media is uploaded to Organik
+Apps or Excalidraw. Internet image URLs are not fetched.

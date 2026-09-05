@@ -57,7 +57,13 @@
       "BUTTONS": 24,
       "API": 25,
       "VAULT_ID": 26,
-      "MARQUEE_SPEED": 27
+      "MARQUEE_SPEED": 27,
+      "REVISION": 28,
+      "ITEM_ID": 29,
+      "CHECKED": 30,
+      "WIDTH": 31,
+      "HEIGHT": 32,
+      "PIXELS": 33
     },
     "resources": {
       "media": [

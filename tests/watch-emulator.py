@@ -2,13 +2,13 @@
 Install build/Notesy-fixture.pbw (same C binary, inert phone JS) in emulator first.
 Phone JS is covered separately by phone.test.js. This never connects to a real watch.
 """
-import json,queue,subprocess,threading,time,uuid,urllib.request,urllib.parse,os
+import base64,json,queue,subprocess,threading,time,uuid,urllib.request,urllib.parse,os
 from pathlib import Path
 from pebble_tool.sdk.emulator import ManagedEmulatorTransport
 from pebble_tool.commands.emucontrol import send_data_to_qemu
 from libpebble2.communication import PebbleConnection
 from libpebble2.communication.transports.qemu.protocol import QemuButton
-from libpebble2.services.appmessage import AppMessageService,CString,Int32
+from libpebble2.services.appmessage import AppMessageService,CString,Int32,ByteArray
 from libpebble2.services.screenshot import Screenshot
 import png
 ROOT=Path(__file__).resolve().parents[1]
@@ -21,7 +21,7 @@ service.register_handler('appmessage',lambda tx,u,data:incoming.put(data) if u==
 service.register_handler('ack',lambda tx,u:acks.add(tx))
 def send(data):
  with lock:
-  tx=service.send_message(app,{k:CString(v) if isinstance(v,str) else Int32(v) for k,v in data.items()})
+  tx=service.send_message(app,{k:CString(v) if isinstance(v,str) else ByteArray(v) if isinstance(v,bytes) else Int32(v) for k,v in data.items()})
   start=time.time()
   while tx not in acks:
    if time.time()-start>4:raise AssertionError('Watch did not acknowledge fixture message')
@@ -42,8 +42,18 @@ def worker():
     for i,n in enumerate(v['items']):send({1:2,2:seq,8:i,3:n['id'],4:n['title'],5:n.get('location',''),20:int(n['folder']),21:int(n['pinned'])})
     send({1:3,2:seq})
    elif cmd==2:
-    v=http('/v2/notes/'+m[3]+'?page='+str(m.get(6,0)))
-    send({1:4,2:seq,4:v['title'],5:v['text'],6:v['page'],7:v['pages'],19:v['parent'],21:int(v['pinned'])})
+    v=http(('/v3/notes/' if m.get(25)==3 else '/v2/notes/')+m[3]+'?page='+str(m.get(6,0)))
+    if v.get('rich'):
+     send({1:12,2:seq,4:v['title'],19:v['parent'],21:int(v['pinned']),28:v['revision'],6:v['offset'],23:v['total'],7:len(v['blocks'])})
+     for i,b in enumerate(v['blocks']):send({1:13,2:seq,8:i,29:b['id'],5:b['text'],20:{'text':0,'task':1,'image':2}[b['kind']],30:int(b.get('checked',False))})
+     send({1:14,2:seq})
+    else:send({1:4,2:seq,4:v['title'],5:v['text'],6:v['page'],7:v['pages'],19:v['parent'],21:int(v['pinned'])})
+   elif cmd==8:
+    v=http('/v3/notes/'+m[3]+'/task',{'vaultId':info['vaultId'],'requestId':m[5],'taskId':m[29],'checked':bool(m[30]),'revision':m[28]});send({1:15,2:seq,29:v['taskId'],30:int(v['checked']),28:v['revision']})
+   elif cmd==9:
+    v=http('/v3/notes/'+m[3]+'/image?'+urllib.parse.urlencode({'index':m[8],'revision':m[28],'width':m[31],'height':m[32]}));data=base64.b64decode(v['data']);send({1:16,2:seq,31:v['width'],32:v['height'],23:len(data)})
+    for offset in range(0,len(data),512):send({1:17,2:seq,8:offset,33:data[offset:offset+512]})
+    send({1:18,2:seq})
    elif cmd==6:
     v=http('/v2/items/'+m[3]+'/pin',{'pinned':bool(m[21]),'vaultId':info['vaultId']});send({1:11,2:seq,3:v['id'],21:int(v['pinned'])})
    elif cmd==5:
@@ -71,6 +81,20 @@ def double_back():
  settle()
 def shot(name):
  png.from_array(Screenshot(pebble).grab_image(),'RGB;8').save(str(ROOT/'build'/name))
+def rich_checks():
+ settings();click('down');click('select');assert calls[-1][0]==2 and calls[-1][25]==3;shot('rich-tasks.png')
+ click('down');click('select');assert calls[-1][0]==8 and calls[-1][30]==1;shot('rich-task-checked.png')
+ assert http('/v3/notes/'+info['note'])['blocks'][1]['checked']
+ click('select');assert calls[-1][30]==0 and not http('/v3/notes/'+info['note'])['blocks'][1]['checked']
+ click('down');click('down');settle();assert calls[-1][0]==9;shot('rich-image.png')
+ click('down');settle();assert calls[-1][0]==9;shot('rich-drawing.png')
+ for _ in range(34):click('down')
+ assert any(m[0]==2 and m.get(6)==2 for m in calls),'Tasks did not reach the third batch'
+ for _ in range(37):click('up')
+ assert [m for m in calls if m[0]==2][-1][6]==0
+ double_back();shot('rich-actions.png');click('back');click('back');assert calls[-1][0]==1
+ print('PASS: mixed note text, task check/uncheck, inline color image and Excalidraw, rich paging in both directions, Actions and Back',flush=True)
+
 def marquee_checks():
  def frame():return tuple(tuple(row) for row in Screenshot(pebble).grab_image())
  def rows(speed):
@@ -143,7 +167,8 @@ def voice_checks():
  print('PASS: configured Append in browser targets the selected note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_MARQUEE_ONLY'):marquee_checks()
+ if os.environ.get('WATCH_TEST_RICH_ONLY'):rich_checks()
+ elif os.environ.get('WATCH_TEST_MARQUEE_ONLY'):marquee_checks()
  elif os.environ.get('WATCH_TEST_DICTATION_ONLY') or os.environ.get('WATCH_TEST_SEARCH_ONLY'):voice_checks()
  else:
   if not os.environ.get('WATCH_TEST_BINDINGS_ONLY'):

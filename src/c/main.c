@@ -1,9 +1,24 @@
 #include <pebble.h>
 #define MAX_NOTES 15
 #define DRAFT_SIZE 768
+#if defined(PBL_PLATFORM_EMERY)
+#define IMAGE_WIDTH 176
+#define IMAGE_HEIGHT 150
+#else
+#define IMAGE_WIDTH 120
+#define IMAGE_HEIGHT 100
+#endif
 typedef struct { char id[65]; char title[112]; char location[96]; bool folder,pinned; } Note;
 static Window *s_main, *s_reader, *s_actions;
-static MenuLayer *s_action_menu;
+static MenuLayer *s_action_menu,*s_rich_menu;
+typedef struct {char text[241],id[24];uint8_t kind;bool checked;} RichItem;
+static RichItem s_rich_items[15];
+static bool s_rich,s_image_loading;static int s_rich_count,s_rich_expected,s_rich_offset,s_rich_total,s_rich_restore;
+static char s_revision[65],s_task_id[24];static bool s_task_checked;
+static GBitmap *s_image;static int s_image_index=-1,s_image_bytes,s_image_received,s_image_pixel;
+static char s_image_error[96];
+static void rich_move(bool down);static void rich_select(void);static void rich_selection(MenuLayer *menu,MenuIndex next,MenuIndex previous,void *context);
+static void image_clear(void);
 static bool s_scroll_to_end;
 static char s_capture_target[65],s_draft_target[65],s_last_append_id[96],s_last_append_target[65],s_delete_id[96];
 static MenuLayer *s_menu;
@@ -47,10 +62,11 @@ static AppTimer *s_marquee_timer;
 static int s_marquee_offset,s_marquee_max,s_marquee_fraction;
 static uint8_t s_marquee_speed=30;
 static bool s_marquee_at_end;
-static char s_marquee_title[128];
+static char s_marquee_title[256];
 static MenuLayer *marquee_menu(void){
   Window *top=window_stack_get_top_window();
   if(s_actions&&top==s_actions)return s_action_menu;
+  if(top==s_reader&&s_rich)return s_rich_menu;
   return top==s_main&&!s_body?s_menu:NULL;
 }
 static void marquee_stop(void){if(s_marquee_timer){app_timer_cancel(s_marquee_timer);s_marquee_timer=NULL;}}
@@ -100,7 +116,7 @@ static void set_status(const char *text) {
 }
 static void clear_timeout(void) { if (s_timeout) { app_timer_cancel(s_timeout); s_timeout = NULL; } }
 static void timed_out(void *unused) {
-  s_timeout = NULL; s_loading = false;s_scroll_to_end=false;
+  s_timeout = NULL; s_loading = false;s_scroll_to_end=false;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}snprintf(s_image_error,sizeof(s_image_error),"No image reply · select to retry");if(s_rich_menu)menu_layer_reload_data(s_rich_menu);}
   if(s_page_label)text_layer_set_text(s_page_label,"No reply · scroll to retry");
   set_status(s_pending ? "Draft kept · select to retry" : "No reply · double Back for actions");
 }
@@ -110,10 +126,19 @@ static void send_command(int command, const char *id, int page, const char *text
   dict_write_int(iter, MESSAGE_KEY_COMMAND, &command, sizeof(command), true);
   dict_write_uint32(iter, MESSAGE_KEY_REQUEST, ++s_request);
   dict_write_int(iter, MESSAGE_KEY_PAGE, &page, sizeof(page), true);
-  dict_write_uint8(iter,MESSAGE_KEY_API,command==3?s_draft_api:2);
+  dict_write_uint8(iter,MESSAGE_KEY_API,command==3?s_draft_api:command==2?3:2);
   if(command==1)dict_write_cstring(iter,MESSAGE_KEY_FOLDER_ID,s_folder);
   if(command==1||command==7)dict_write_cstring(iter,MESSAGE_KEY_SNAPSHOT,s_snapshot);
   if(command==3&&s_draft_api==2){dict_write_cstring(iter,MESSAGE_KEY_FOLDER_ID,s_draft_folder);dict_write_cstring(iter,MESSAGE_KEY_VAULT_ID,s_draft_vault);}
+  if(command==8){dict_write_cstring(iter,MESSAGE_KEY_ITEM_ID,s_task_id);dict_write_cstring(iter,MESSAGE_KEY_REVISION,s_revision);dict_write_uint8(iter,MESSAGE_KEY_CHECKED,s_task_checked);}
+  if(command==9){
+    dict_write_cstring(iter,MESSAGE_KEY_REVISION,s_revision);dict_write_uint32(iter,MESSAGE_KEY_INDEX,s_image_index);
+#if defined(PBL_PLATFORM_EMERY)
+    dict_write_uint16(iter,MESSAGE_KEY_WIDTH,176);dict_write_uint16(iter,MESSAGE_KEY_HEIGHT,150);
+#else
+    dict_write_uint16(iter,MESSAGE_KEY_WIDTH,120);dict_write_uint16(iter,MESSAGE_KEY_HEIGHT,100);
+#endif
+  }
   if(command==6)dict_write_uint8(iter,MESSAGE_KEY_PINNED,s_pin_value);
   if (id) dict_write_cstring(iter, MESSAGE_KEY_NOTE_ID, id);
   if (text) dict_write_cstring(iter, MESSAGE_KEY_TEXT, text);
@@ -313,6 +338,7 @@ static void render_note(void) {
   text_layer_set_text(s_page_label, "Double Back: actions");
 }
 static void scroll_note(bool down) {
+  if(s_rich){rich_move(down);return;}
   if(s_loading||!s_scroll)return;
   GPoint offset=scroll_layer_get_content_offset(s_scroll);
   int content=scroll_layer_get_content_size(s_scroll).h;
@@ -343,12 +369,12 @@ static void press(ClickRecognizerRef recognizer,void *context){
   if(button<0||button>2)return;
   int action=s_buttons[(s_body?6:0)+button];
   if(action)perform(action==8?11:action);
-  else if(button==1)perform(s_body?5:8);
+  else if(button==1){if(s_rich)rich_select();else perform(s_body?5:8);}
   else if(s_body)scroll_note(button==2);else move_selection(button==2);
 }
 static void long_press(ClickRecognizerRef recognizer,void *context){
   int button=click_recognizer_get_button_id(recognizer)-BUTTON_ID_UP;
-  if(button>=0&&button<=2){int action=s_buttons[(s_body?9:3)+button];if(action)perform(action==8?11:action);else if(button==1)perform(s_body?5:8);else if(s_body)scroll_note(button==2);else move_selection(button==2);}
+  if(button>=0&&button<=2){int action=s_buttons[(s_body?9:3)+button];if(action)perform(action==8?11:action);else if(button==1){if(s_rich)rich_select();else perform(s_body?5:8);}else if(s_body)scroll_note(button==2);else move_selection(button==2);}
 }
 static void back_click(ClickRecognizerRef recognizer,void *context){
   if(s_body){window_stack_pop(true);if(!s_snapshot[0])refresh_list();return;}
@@ -394,8 +420,70 @@ static void open_actions(ClickRecognizerRef recognizer,void *context){
   if(s_actions)window_destroy(s_actions);
   s_actions=window_create();window_set_window_handlers(s_actions,(WindowHandlers){.load=actions_load,.unload=actions_unload,.appear=marquee_appear,.disappear=marquee_disappear});window_stack_push(s_actions,true);
 }
+static void image_clear(void){if(s_image){gbitmap_destroy(s_image);s_image=NULL;}s_image_loading=false;s_image_index=-1;s_image_error[0]=0;}
+static uint16_t rich_rows(MenuLayer *menu,uint16_t section,void *context){return s_rich_count?s_rich_count:1;}
+static int16_t rich_height(MenuLayer *menu,MenuIndex *index,void *context){
+  if(index->row>=s_rich_count){return 64;}RichItem *item=&s_rich_items[index->row];
+  if(item->kind==1)return s_theme_size+24;
+  if(item->kind==2){
+    if(s_image&&!s_image_loading&&s_image_index==s_rich_offset+index->row)return gbitmap_get_bounds(s_image).size.h+34;
+#if defined(PBL_PLATFORM_EMERY)
+    return 190;
+#else
+    return 140;
+#endif
+  }
+  int width=layer_get_bounds(menu_layer_get_layer(menu)).size.w-12;
+  GSize size=graphics_text_layout_get_content_size(item->text,theme_title_font(),GRect(0,0,width,600),GTextOverflowModeWordWrap,GTextAlignmentLeft);
+  return size.h+16;
+}
+static void rich_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *context){
+  GRect bounds=layer_get_bounds(cell);bool selected=menu_cell_layer_is_highlighted(cell);
+  graphics_context_set_text_color(ctx,selected?s_selection_text:s_foreground);
+  if(index->row>=s_rich_count){graphics_draw_text(ctx,"Loading note…",theme_title_font(),bounds,GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);return;}
+  RichItem *item=&s_rich_items[index->row];
+  if(item->kind==1){
+    graphics_context_set_stroke_color(ctx,selected?s_selection_text:s_foreground);graphics_context_set_stroke_width(ctx,2);graphics_draw_rect(ctx,GRect(6,12,16,16));
+    if(item->checked){graphics_draw_line(ctx,GPoint(9,20),GPoint(13,24));graphics_draw_line(ctx,GPoint(13,24),GPoint(20,15));}
+    draw_menu_title(ctx,cell,item->text,theme_title_font(),GRect(28,4,bounds.size.w-34,bounds.size.h-8));
+    // The marquee's margin mask ends before the checkbox area; redraw the checkbox afterward.
+    graphics_context_set_stroke_color(ctx,selected?s_selection_text:s_foreground);graphics_draw_rect(ctx,GRect(6,12,16,16));
+    if(item->checked){graphics_draw_line(ctx,GPoint(9,20),GPoint(13,24));graphics_draw_line(ctx,GPoint(13,24),GPoint(20,15));}
+  }else if(item->kind==2){
+    graphics_draw_text(ctx,item->text,fonts_get_system_font(FONT_KEY_GOTHIC_14),GRect(6,0,bounds.size.w-12,22),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
+    if(s_image_index==s_rich_offset+index->row&&s_image&&!s_image_loading){GRect image=gbitmap_get_bounds(s_image);graphics_draw_bitmap_in_rect(ctx,s_image,GRect((bounds.size.w-image.size.w)/2,26,image.size.w,image.size.h));}
+    else graphics_draw_text(ctx,s_image_index==s_rich_offset+index->row?(s_image_error[0]?s_image_error:"Loading image…"):"Select to show image",fonts_get_system_font(FONT_KEY_GOTHIC_18),GRect(6,34,bounds.size.w-12,bounds.size.h-38),GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);
+  }else graphics_draw_text(ctx,item->text,theme_title_font(),GRect(6,4,bounds.size.w-12,bounds.size.h-8),GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);
+}
+static void rich_selection(MenuLayer *menu,MenuIndex next,MenuIndex previous,void *context){
+  marquee_reset();if(s_loading||next.row>=s_rich_count)return;
+  if(s_image_loading&&s_image_index==s_rich_offset+next.row)return;
+  if(s_image_loading){++s_request;clear_timeout();image_clear();}
+  RichItem *item=&s_rich_items[next.row];
+  if(item->kind==2&&s_image_index!=s_rich_offset+next.row){image_clear();s_image_index=s_rich_offset+next.row;s_image_loading=true;send_command(9,s_current_id,0,NULL);}
+}
+static void rich_move(bool down){
+  if(s_loading||!s_rich_menu){return;}int row=menu_layer_get_selected_index(s_rich_menu).row;
+  if((down&&row==s_rich_count-1&&s_rich_offset+s_rich_count<s_rich_total)||(!down&&row==0&&s_rich_offset>0)){
+    s_rich_restore=down?0:14;s_loading=true;image_clear();send_command(2,s_current_id,s_rich_offset/15+(down?1:-1),NULL);return;
+  }
+  int next=row+(down?1:-1);if(next>=0&&next<s_rich_count)menu_layer_set_selected_index(s_rich_menu,MenuIndex(0,next),MenuRowAlignCenter,true);
+}
+static void rich_select(void){
+  if(s_loading||!s_rich_menu){return;}int row=menu_layer_get_selected_index(s_rich_menu).row;if(row>=s_rich_count)return;RichItem *item=&s_rich_items[row];
+  if(item->kind==2){image_clear();rich_selection(s_rich_menu,MenuIndex(0,row),MenuIndex(0,row),NULL);return;}
+  if(item->kind!=1){open_actions(NULL,NULL);return;}
+  s_task_checked=!item->checked;snprintf(s_task_id,sizeof(s_task_id),"%s",item->id);
+  char operation[96];snprintf(operation,sizeof(operation),"task-%lu-%lu",(unsigned long)time(NULL),(unsigned long)rand());
+  s_loading=true;set_status("Saving task…");send_command(8,s_current_id,0,operation);
+}
+static void rich_enable(void){
+  s_rich=true;image_clear();layer_set_hidden(text_layer_get_layer(s_heading),true);layer_set_hidden(scroll_layer_get_layer(s_scroll),true);
+  if(!s_rich_menu){GRect bounds=layer_get_bounds(window_get_root_layer(s_reader));s_rich_menu=menu_layer_create(GRect(0,0,bounds.size.w,bounds.size.h-20));menu_layer_set_callbacks(s_rich_menu,NULL,(MenuLayerCallbacks){.get_num_rows=rich_rows,.get_cell_height=rich_height,.draw_row=rich_draw,.selection_changed=rich_selection});layer_add_child(window_get_root_layer(s_reader),menu_layer_get_layer(s_rich_menu));}
+  menu_layer_set_normal_colors(s_rich_menu,s_background,s_foreground);menu_layer_set_highlight_colors(s_rich_menu,s_highlight,s_selection_text);window_set_click_config_provider(s_reader,reader_clicks);
+}
 static void reader_unload(Window *window) {
-  s_loading=false; ++s_request; clear_timeout();
+  s_loading=false; ++s_request; clear_timeout();image_clear();marquee_stop();s_rich=false;s_rich_count=0;s_rich_restore=0;if(s_rich_menu){menu_layer_destroy(s_rich_menu);s_rich_menu=NULL;}
   text_layer_destroy(s_body); text_layer_destroy(s_heading); text_layer_destroy(s_page_label); scroll_layer_destroy(s_scroll);
   s_body=NULL; s_heading=NULL; s_page_label=NULL; s_scroll=NULL;
 }
@@ -490,7 +578,36 @@ static void inbox(DictionaryIterator *iter, void *context) {
     set_status(s_search&&!s_total?"No matches · search again":s_folder_title);
     int row=s_restore_row;if(row>s_count)row=s_count;if(row<0)row=0;
     menu_layer_set_selected_index(s_menu,MenuIndex(0,row),row?MenuRowAlignCenter:MenuRowAlignTop,false);
+  } else if(kind==12&&s_body){
+    rich_enable();s_loading=true;s_rich_count=0;memset(s_rich_items,0,sizeof(s_rich_items));
+    Tuple *count=dict_find(iter,MESSAGE_KEY_COUNT),*offset=dict_find(iter,MESSAGE_KEY_PAGE),*total=dict_find(iter,MESSAGE_KEY_TOTAL),*revision=dict_find(iter,MESSAGE_KEY_REVISION),*parent=dict_find(iter,MESSAGE_KEY_PARENT_ID),*pinned=dict_find(iter,MESSAGE_KEY_PINNED);
+    s_rich_expected=count?count->value->int32:0;if(s_rich_expected<0||s_rich_expected>15)s_rich_expected=0;
+    s_rich_offset=offset?offset->value->int32:0;s_page=s_rich_offset/15;s_rich_total=total?total->value->int32:0;
+    if(revision){snprintf(s_revision,sizeof(s_revision),"%s",revision->value->cstring);}if(parent)snprintf(s_note_parent,sizeof(s_note_parent),"%s",parent->value->cstring);if(title)snprintf(s_title,sizeof(s_title),"%s",title->value->cstring);s_note_pinned=pinned&&pinned->value->int32;
+  } else if(kind==13&&s_rich){
+    Tuple *index=dict_find(iter,MESSAGE_KEY_INDEX),*item=dict_find(iter,MESSAGE_KEY_ITEM_ID),*entry=dict_find(iter,MESSAGE_KEY_ENTRY_KIND),*checked=dict_find(iter,MESSAGE_KEY_CHECKED);int i=index?index->value->int32:-1;
+    if(i>=0&&i<s_rich_expected&&text){snprintf(s_rich_items[i].text,sizeof(s_rich_items[i].text),"%s",text->value->cstring);if(item)snprintf(s_rich_items[i].id,sizeof(s_rich_items[i].id),"%s",item->value->cstring);s_rich_items[i].kind=entry?entry->value->int32:0;s_rich_items[i].checked=checked&&checked->value->int32;}
+  } else if(kind==14&&s_rich){
+    clear_timeout();s_loading=false;for(int i=0;i<s_rich_expected;i++){if(!s_rich_items[i].id[0]){set_status("Note interrupted · refresh to retry");return;}}s_rich_count=s_rich_expected;marquee_reset();menu_layer_reload_data(s_rich_menu);
+    int row=s_rich_restore;if(row>=s_rich_count)row=s_rich_count-1;if(row<0)row=0;s_rich_restore=0;menu_layer_set_selected_index(s_rich_menu,MenuIndex(0,row),MenuRowAlignTop,false);rich_selection(s_rich_menu,MenuIndex(0,row),MenuIndex(0,row),NULL);text_layer_set_text(s_page_label,"Double Back: actions");
+  } else if(kind==15&&s_rich){
+    clear_timeout();s_loading=false;Tuple *item=dict_find(iter,MESSAGE_KEY_ITEM_ID),*checked=dict_find(iter,MESSAGE_KEY_CHECKED),*revision=dict_find(iter,MESSAGE_KEY_REVISION);
+    if(item)for(int i=0;i<s_rich_count;i++)if(strcmp(s_rich_items[i].id,item->value->cstring)==0)s_rich_items[i].checked=checked&&checked->value->int32;
+    if(revision){snprintf(s_revision,sizeof(s_revision),"%s",revision->value->cstring);}s_snapshot[0]=0;s_before_search.snapshot[0]=0;set_status("Task saved");menu_layer_reload_data(s_rich_menu);
+  } else if(kind==16&&s_rich&&s_image_loading){
+    Tuple *width=dict_find(iter,MESSAGE_KEY_WIDTH),*height=dict_find(iter,MESSAGE_KEY_HEIGHT),*total=dict_find(iter,MESSAGE_KEY_TOTAL);int w=width?width->value->int32:0,h=height?height->value->int32:0;
+    if(w<1||w>IMAGE_WIDTH||h<1||h>IMAGE_HEIGHT){image_clear();set_status("Invalid image size");return;}s_image=gbitmap_create_blank(GSize(w,h),GBitmapFormat8Bit);s_image_received=0;s_image_pixel=0;s_image_bytes=total?total->value->int32:0;
+    if(!s_image){s_image_loading=false;snprintf(s_image_error,sizeof(s_image_error),"Not enough watch memory for this image");}
+  } else if(kind==17&&s_rich&&s_image_loading&&s_image){
+    Tuple *bytes=dict_find(iter,MESSAGE_KEY_PIXELS),*offset=dict_find(iter,MESSAGE_KEY_INDEX);if(!bytes||!offset||offset->value->int32!=s_image_received||bytes->length%2){image_clear();set_status("Image interrupted · select to retry");return;}
+    GRect size=gbitmap_get_bounds(s_image);uint8_t *dest=gbitmap_get_data(s_image);int stride=gbitmap_get_bytes_per_row(s_image);
+    const uint8_t *source=(const uint8_t *)bytes->value;for(int i=0;i<bytes->length;i+=2){int run=source[i];uint8_t color=source[i+1];if(!run||s_image_pixel+run>size.size.w*size.size.h){image_clear();set_status("Invalid image data");return;}for(int j=0;j<run;j++){dest[(s_image_pixel/size.size.w)*stride+s_image_pixel%size.size.w]=color;s_image_pixel++;}}
+    s_image_received+=bytes->length;clear_timeout();s_timeout=app_timer_register(18000,timed_out,NULL);
+  } else if(kind==18&&s_rich&&s_image_loading&&s_image){
+    clear_timeout();GRect bounds=gbitmap_get_bounds(s_image);if(s_image_received!=s_image_bytes||s_image_pixel!=bounds.size.w*bounds.size.h){image_clear();set_status("Image interrupted · select to retry");return;}s_image_loading=false;text_layer_set_text(s_page_label,"Double Back: actions");menu_layer_reload_data(s_rich_menu);
   } else if(kind==4&&s_body) {
+    if(s_rich){s_rich=false;image_clear();if(s_rich_menu){menu_layer_destroy(s_rich_menu);s_rich_menu=NULL;}layer_set_hidden(text_layer_get_layer(s_heading),false);layer_set_hidden(scroll_layer_get_layer(s_scroll),false);}
+
     clear_timeout();s_loading=false;Tuple *page=dict_find(iter,MESSAGE_KEY_PAGE),*count=dict_find(iter,MESSAGE_KEY_COUNT);
     s_page=page?page->value->int32:0;s_pages=count?count->value->int32:1;
     if(text)snprintf(s_body_text,sizeof(s_body_text),"%s",text->value->cstring);
@@ -519,7 +636,7 @@ static void inbox(DictionaryIterator *iter, void *context) {
     }
     if((kind==8||(kind==7&&!s_count))&&!s_body&&!s_loading)refresh_list();
   } else if(kind==5||kind==9) {
-    if(kind==9){clear_timeout();s_loading=false;s_snapshot[0]=0;}
+    if(kind==9){clear_timeout();s_loading=false;s_snapshot[0]=0;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}if(text)snprintf(s_image_error,sizeof(s_image_error),"%s",text->value->cstring);if(s_rich_menu)menu_layer_reload_data(s_rich_menu);}}
     if(text)set_status(text->value->cstring);
     if(kind==9&&s_body){s_scroll_to_end=false;text_layer_set_text(s_page_label,s_status);}
   }
