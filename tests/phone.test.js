@@ -24,12 +24,13 @@ test('capture is acknowledged after phone persistence and saved only after the M
 });
 test('settings shows connection progress, success and errors with browser window.status semantics',()=>{
  const p=phone();p.handlers.showConfiguration();const html=decodeURIComponent(p.urls[0].split(',').slice(1).join(','));
- const elements={};for(const id of ['pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
+ const elements={};for(const id of ['buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
+ for(let i=0;i<12;i++)elements['button-'+i]={value:String(require('../src/pkjs/buttons').normalize()[i])};
  let request;const context={document:{getElementById:id=>elements[id]},location:{href:''},XMLHttpRequest:function(){request=this;this.open=()=>{};this.setRequestHeader=()=>{};this.send=()=>{};}};
  let browserStatus='';Object.defineProperty(context,'status',{get:()=>browserStatus,set:v=>{browserStatus=String(v);},configurable:true});
  vm.runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
  elements.pair.value=JSON.stringify(config);elements.test.onclick();assert.equal(elements.status.textContent,'Connecting…');
- request.status=200;request.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId});request.onload();assert.equal(elements.status.textContent,'Connected to your notes folder.');
+ request.status=200;request.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId});request.onload();assert.equal(elements.status.textContent,'Connected to your vault.');
  elements['appearance-preset'].value='2';elements['appearance-preset'].onchange();
  elements.save.onclick();assert.match(context.location.href,/^pebblejs:\/\/close#/);
  const saved=JSON.parse(decodeURIComponent(context.location.href.split('#')[1]));assert.equal(saved.appearance.background,'#000055');assert.equal(saved.appearance.font,'roboto-condensed');assert.equal(saved.gatewayToken,config.gatewayToken);
@@ -45,4 +46,18 @@ test('phone routes append to the chosen note and only confirms an acknowledged d
  const req=p.requests[1];assert.ok(req.url.endsWith('/'+id+'/delete'));req.status=200;req.responseText='{"saved":true}';req.onload();assert.ok(!p.messages.some(m=>m.TYPE===10));
  p.handlers.appmessage({payload:{COMMAND:5,NOTE_ID:id,TEXT:'delete_phone_123',REQUEST:10}});
  const again=p.requests[2];again.status=200;again.responseText='{"deleted":true}';again.onload();assert.ok(p.messages.some(m=>m.TYPE===10&&m.REQUEST===10));
+});
+test('browser lists carry folder types, pins, page positions and stale replies are ignored',()=>{
+ const p=phone(),c={...config,browserId:'b'.repeat(64),root:'c'.repeat(64)};p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify(c))});
+ const send=(seq,offset)=>p.handlers.appmessage({payload:{COMMAND:1,API:2,REQUEST:seq,FOLDER_ID:c.root,PAGE:offset,SNAPSHOT:'abc'}});
+ send(21,0);send(22,15);assert.match(p.requests[1].url,/v2\/browse/);assert.match(p.requests[1].url,/offset=15&snapshot=abc/);
+ function reply(req,title){req.status=200;req.responseText=JSON.stringify({items:[{id:'d'.repeat(64),title,folder:true,pinned:true}],id:c.root,parent:'',offset:15,total:31,title:'Vault',snapshot:'abc'});req.onload();}
+ reply(p.requests[1],'Current');reply(p.requests[0],'Stale');const row=p.messages.find(m=>m.TITLE==='Current');assert.equal(row.ENTRY_KIND,1);assert.equal(row.PINNED,1);assert.ok(!p.messages.some(m=>m.TITLE==='Stale'));
+});
+test('phone learns browser identity from existing pairing and sends all twelve button bindings',()=>{
+ const p=phone();p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,buttons:[3,2,1,4,5,6,7,0,0,2,4,5]}))});p.handlers.ready();
+ const req=p.requests[0];req.status=200;req.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId,browserId:'b'.repeat(64),root:'c'.repeat(64)});req.onload();
+ const settings=p.messages.filter(m=>m.TYPE===6).at(-1);assert.equal(settings.API,2);assert.equal(settings.BUTTONS,'3,2,1,4,5,6,7,0,0,2,4,5');assert.equal(settings.FOLDER_ID,'c'.repeat(64));
+ p.handlers.appmessage({payload:{COMMAND:3,API:2,NOTE_ID:'v2_phone_draft',TEXT:'Here',FOLDER_ID:'d'.repeat(64),VAULT_ID:'b'.repeat(64)}});
+ assert.match(p.requests[1].url,/v2\/notes$/);assert.equal(JSON.parse(p.requests[1].body).folderId,'d'.repeat(64));
 });

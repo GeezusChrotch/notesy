@@ -1,7 +1,10 @@
 # StoneNotes privacy
 
-StoneNotes creates and reads Markdown files only in the selected notes folder inside the vault (`Pebble` by default). It appends to the open note when requested and moves a note into the selected folder’s `.trash` when Delete note is selected. It does not index the rest of the vault or collect
-analytics or send note contents to Organik Apps.
+StoneNotes can browse regular folders and Markdown files throughout the selected Obsidian vault.
+It creates notes in the chosen location, appends to the selected note on request, and moves a
+deleted note into `.trash` inside its containing folder. Hidden paths and symbolic links are
+excluded. It indexes paths only in folders the user visits; it does not recursively read the
+vault’s contents. No analytics or note contents are sent to Organik Apps.
 
 Pebble dictation transmits audio through the paired phone's dictation service for transcription.
 That service's own terms and privacy practices apply. StoneNotes receives the transcribed text;
@@ -18,7 +21,7 @@ bounded list of delivery IDs without their text. The Mac retains delivery receip
 filenames, and timestamps in Application Support to prevent duplicates after a retry or restart.
 Deleting or moving a saved note does not cause it to be recreated by a delayed retry.
 
-The selected vault bookmark and service settings remain on the Mac. The service listens only on
+The selected vault bookmark, service settings, visited entry paths and pinned item IDs remain on the Mac. Browser snapshots hold titles in memory for up to 30 minutes. Pins are specific to the selected vault. The service listens only on
 loopback. The connector can configure a Tailscale Serve route; it never enables public Funnel
 access. Closing the Mac window keeps the service available. Quitting the app stops StoneNotes.
 

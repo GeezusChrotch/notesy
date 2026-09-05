@@ -22,3 +22,13 @@ test('append destination survives restart and cannot become a new note or anothe
  assert.throws(()=>d.enqueue('append_queued_123','More text',config,'c'.repeat(64)),/conflict/);
  assert.equal(d.pending()[0].targetId,target);
 });
+test('vault browser queue preserves folders, vault identity and old pending deliveries through upgrade',()=>{
+ const s=storage(),config={gatewayURL:'https://unit.ts.net',vaultId:'legacy',browserId:'b'.repeat(64)},folder='c'.repeat(64),events=[];
+ let d=new Delivery(s,()=>{},()=>{});d.enqueue('legacy-draft','Legacy destination',config);
+ d.enqueue('browser-draft','Folder destination',config,'',{api:2,folderId:folder,vaultId:config.browserId});
+ assert.throws(()=>d.enqueue('browser-draft','Folder destination',config,'',{api:2,folderId:'d'.repeat(64),vaultId:config.browserId}),/conflict/);
+ d=new Delivery(s,(c,n,cb)=>{events.push(n);cb(null,{saved:true});},()=>{});d.pump(config);d.pump(config);
+ assert.equal(events[0].api,1);assert.equal(events[0].vaultId,'legacy');assert.equal(events[1].api,2);assert.equal(events[1].folderId,folder);assert.equal(events[1].vaultId,config.browserId);
+ d.enqueue('another-draft','Keep destination',config,'',{api:2,folderId:folder,vaultId:config.browserId});
+ d.pump({...config,browserId:'e'.repeat(64)});assert.equal(events.length,2);assert.equal(d.pending().length,1);
+});

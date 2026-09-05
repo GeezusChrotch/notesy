@@ -1,0 +1,159 @@
+"""Native C + disposable gateway integration. Run with the Pebble tool's Python.
+Install build/StoneNotes-fixture.pbw (same C binary, inert phone JS) in emulator first.
+Phone JS is covered separately by phone.test.js. This never connects to a real watch.
+"""
+import json,queue,subprocess,threading,time,uuid,urllib.request,urllib.parse,os
+from pathlib import Path
+from pebble_tool.sdk.emulator import ManagedEmulatorTransport
+from pebble_tool.commands.emucontrol import send_data_to_qemu
+from libpebble2.communication import PebbleConnection
+from libpebble2.communication.transports.qemu.protocol import QemuButton
+from libpebble2.services.appmessage import AppMessageService,CString,Int32
+from libpebble2.services.screenshot import Screenshot
+import png
+ROOT=Path(__file__).resolve().parents[1]
+fixture=subprocess.Popen(['node',str(ROOT/'tests/emulator-fixture.js')],stdout=subprocess.PIPE,text=True)
+info=json.loads(fixture.stdout.readline());base='http://127.0.0.1:'+str(info['port'])
+pebble=PebbleConnection(ManagedEmulatorTransport('emery'));pebble.connect();pebble.run_async()
+service=AppMessageService(pebble);app=uuid.UUID('b9270b92-5e0e-491b-9993-165f849d7250')
+incoming=queue.Queue();calls=[];failures=[];acks=set();lock=threading.Lock();done=threading.Event()
+service.register_handler('appmessage',lambda tx,u,data:incoming.put(data) if u==app else None)
+service.register_handler('ack',lambda tx,u:acks.add(tx))
+def send(data):
+ with lock:
+  tx=service.send_message(app,{k:CString(v) if isinstance(v,str) else Int32(v) for k,v in data.items()})
+  start=time.time()
+  while tx not in acks:
+   if time.time()-start>4:raise AssertionError('Watch did not acknowledge fixture message')
+   time.sleep(.01)
+  acks.remove(tx)
+def http(route,body=None):
+ req=urllib.request.Request(base+route,headers={'Authorization':'Bearer '+'fixture-token-'*4,'Content-Type':'application/json'},data=json.dumps(body).encode() if body is not None else None)
+ return json.load(urllib.request.urlopen(req,timeout=5))
+def worker():
+ while not done.is_set():
+  try:m=incoming.get(timeout=.2)
+  except queue.Empty:continue
+  try:
+   calls.append(m);cmd=m[0];seq=m[2]
+   if cmd==1:
+    v=http('/v2/browse?'+urllib.parse.urlencode({'folder':m.get(18,''),'offset':m.get(6,0),'snapshot':m.get(22,'')}))
+    send({1:1,2:seq,7:len(v['items']),6:v['offset'],23:v['total'],18:v['id'],19:v['parent'],4:v['title'],22:v['snapshot']})
+    for i,n in enumerate(v['items']):send({1:2,2:seq,8:i,3:n['id'],4:n['title'],20:int(n['folder']),21:int(n['pinned'])})
+    send({1:3,2:seq})
+   elif cmd==2:
+    v=http('/v2/notes/'+m[3]+'?page='+str(m.get(6,0)))
+    send({1:4,2:seq,4:v['title'],5:v['text'],6:v['page'],7:v['pages'],19:v['parent'],21:int(v['pinned'])})
+   elif cmd==6:
+    v=http('/v2/items/'+m[3]+'/pin',{'pinned':bool(m[21]),'vaultId':info['vaultId']});send({1:11,2:seq,3:v['id'],21:int(v['pinned'])})
+   elif cmd==5:
+    v=http('/v2/items/'+m[3]+'/delete',{'requestId':m[5],'vaultId':info['vaultId']});send({1:10,2:seq,3:v['id']})
+   elif cmd==3:
+    body={'requestId':m[3],'text':m[5],'vaultId':m[26],'folderId':m[18]}
+    send({1:7,3:m[3]})
+    v=http('/v2/items/'+m[17]+'/append' if m.get(17) else '/v2/notes',body)
+    assert v['saved'];send({1:8,3:m[3]})
+  except Exception as e:failures.append(str(e));print('FAIL',e,flush=True)
+  finally:incoming.task_done()
+threading.Thread(target=worker,daemon=True).start()
+def settle():
+ time.sleep(.25);incoming.join();time.sleep(.2)
+ assert not failures,failures
+buttons=[0,0,0,4,5,1,0,0,0,4,2,6]
+def settings(bindings=buttons):
+ send({1:6,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,bindings)),11:255,12:192,13:192,14:255,15:5,16:22});settle()
+def click(name,long=False):
+ value={'up':QemuButton.Button.Up,'down':QemuButton.Button.Down,'select':QemuButton.Button.Select,'back':QemuButton.Button.Back}[name]
+ send_data_to_qemu(pebble.transport,QemuButton(state=value));time.sleep(.75 if long else .06);send_data_to_qemu(pebble.transport,QemuButton(state=0));settle()
+def double_back():
+ for _ in range(2):
+  send_data_to_qemu(pebble.transport,QemuButton(state=QemuButton.Button.Back));time.sleep(.06);send_data_to_qemu(pebble.transport,QemuButton(state=0));time.sleep(.08)
+ settle()
+def shot(name):
+ png.from_array(Screenshot(pebble).grab_image(),'RGB;8').save(str(ROOT/'build'/name))
+def voice_checks():
+ from libpebble2.services.voice import VoiceService,SetupResult,TranscriptionResult
+ class FixtureVoice(VoiceService):
+  # No real microphone audio is needed. Ignore late frames after a simulated result;
+  # the SDK voice helper otherwise calls send_stop_audio with an unsupported argument.
+  def _handle_audio_frame(self,session_id,frame):pass
+ voice=FixtureVoice(pebble)
+ def setup(u,encoder):
+  voice.send_session_setup_result(SetupResult.Success,u)
+  def finish():
+   voice.send_stop_audio();voice.send_dictation_result(TranscriptionResult.Success,sentences=[['Fixture','dictation','capture']],app_uuid=u)
+  threading.Timer(.7,finish).start()
+ voice.register_handler('session_setup',setup)
+ settings();click('select');time.sleep(1.5);shot('vault-dictation-confirm.png')
+ print('Simulated transcription reached the watch confirmation screen',flush=True)
+ confirm='select'
+ click(confirm);assert [m for m in calls if m[0]==3][-1][18]==info['root']
+ assert not [m for m in calls if m[0]==3][-1].get(17)
+ print('PASS: dictated root note carries root destination',flush=True)
+ settings();listing=http('/v2/browse');row=next(i for i,n in enumerate(listing['items']) if n['id']==info['projects'])+1
+ for _ in range(row):click('down')
+ click('select');click('select');time.sleep(1.5);click(confirm)
+ capture=[m for m in calls if m[0]==3][-1];assert capture[18]==info['projects'] and not capture.get(17)
+ print('PASS: dictated folder note carries nested destination',flush=True)
+ settings();listing=http('/v2/browse?folder='+info['projects']);row=next(i for i,n in enumerate(listing['items']) if n['id']==info['note'])+1
+ for _ in range(row):click('down')
+ click('select');click('select',True);time.sleep(1.5);click(confirm)
+ capture=[m for m in calls if m[0]==3][-1];assert capture[17]==info['note']
+ assert capture[5]=='Fixture dictation capture'
+ print('PASS: dictation in reader appends to the open note',flush=True)
+ custom=buttons.copy();custom[11]=1;settings(custom);click('down',True);time.sleep(1.5);click(confirm)
+ capture=[m for m in calls if m[0]==3][-1];assert capture[18]==info['projects'] and not capture.get(17)
+ print('PASS: configured New note in reader saves beside the open note',flush=True)
+ click('back');settings();listing=http('/v2/browse?folder='+info['projects']);row=next(i for i,n in enumerate(listing['items']) if n['id']==info['note'])+1
+ custom=buttons.copy();custom[4]=2;settings(custom)
+ for _ in range(row):click('down')
+ click('select',True);time.sleep(1.5);click(confirm)
+ assert [m for m in calls if m[0]==3][-1][17]==info['note']
+ print('PASS: configured Append in browser targets the selected note',flush=True)
+
+try:
+ if os.environ.get('WATCH_TEST_DICTATION_ONLY'):voice_checks()
+ else:
+  if not os.environ.get('WATCH_TEST_BINDINGS_ONLY'):
+   settings();assert calls[-1][0]==1;shot('vault-browser-root.png')
+   click('down');click('select');assert calls[-1][0]==2;shot('vault-browser-reader.png')
+   for _ in range(90):click('down')
+   assert any(m[0]==2 and m.get(6,0)>0 for m in calls),'Reader did not fetch another chunk'
+   for _ in range(90):click('up')
+   assert [m for m in calls if m[0]==2][-1][6]==0,'Reader did not return to first chunk'
+   click('up',True);assert any(m[0]==6 for m in calls);click('back')
+   click('down');click('down');click('select');assert calls[-1].get(18)==info['projects'];shot('vault-browser-folder.png')
+   click('down');click('select');click('back');click('back')
+   for _ in range(42):click('down')
+   assert any(m[0]==1 and m.get(6)==30 for m in calls),'List did not reach its third page'
+   shot('vault-browser-third-page.png')
+   for _ in range(45):click('up')
+   assert [m for m in calls if m[0]==1][-1].get(6)==0,'List did not page backward'
+   print('PASS: root pins, folders, root notes, nested Back, and forward/backward list and note paging',flush=True)
+  for index in range(6):
+   custom=buttons.copy();custom[index]=4;settings(custom);double_back()
+   for _ in range(7):click('down')
+   click('select')
+   previous=len([m for m in calls if m[0]==6]);click(['up','select','down'][index%3],index>=3)
+   assert len([m for m in calls if m[0]==6])==previous+1,('Main binding failed',index)
+  print('PASS: all six main-view press/long-press bindings',flush=True)
+  # Open a known root note; folder pins can change the root ordering.
+  settings();listing=http('/v2/browse');row=next(i for i,n in enumerate(listing['items']) if not n['folder'])+1
+  for _ in range(row):click('down')
+  click('select');assert calls[-1][0]==2
+  for index in range(6,12):
+   custom=buttons.copy();custom[index]=4;settings(custom)
+   previous=len([m for m in calls if m[0]==6]);click(['up','select','down'][index%3],index%6>=3)
+   assert len([m for m in calls if m[0]==6])==previous+1,('Note binding failed',index)
+  print('PASS: all six note-view press/long-press bindings',flush=True)
+  # Configure single Select as Delete, then prove one press produces one deletion.
+  custom=buttons.copy();custom[7]=3;settings(custom);previous=len([m for m in calls if m[0]==5]);click('select')
+  assert len([m for m in calls if m[0]==5])==previous+1
+  # Even with Select rebound, double-pressing Back always opens the normal actions menu.
+  custom=buttons.copy();custom[1]=6;settings(custom);double_back();shot('vault-browser-actions.png');click('back')
+  print('PASS: immediate one-step delete and hardware Back actions fallback',flush=True)
+
+except Exception:
+ shot('vault-test-failure.png');print('Commands at failure',[(m[0],m.get(6),m.get(21)) for m in calls[-8:]],flush=True);raise
+finally:
+ done.set();service.shutdown();fixture.terminate();fixture.wait(timeout=5)

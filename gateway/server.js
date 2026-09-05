@@ -36,16 +36,16 @@ function shortText(text, limit = 100) {
   return result;
 }
 class NoteStore {
-  constructor(vault, state, folder = 'Pebble') {
+  constructor(vault, state, folder = 'Pebble', options = {}) {
     this.vault = fs.realpathSync(vault);
     if (!fs.statSync(this.vault).isDirectory()) throw new Fault(400, 'Choose a vault folder.');
-    if(typeof folder!=='string'||path.isAbsolute(folder)||folder.split('/').some(p=>!p||p==='..'||p.startsWith('.')))throw new Fault(400,'Choose a notes folder inside the vault.');
+    if(typeof folder!=='string'||path.isAbsolute(folder)||(!(options.root&&folder==='')&&folder.split('/').some(p=>!p||p==='..'||p.startsWith('.'))))throw new Fault(400,'Choose a notes folder inside the vault.');
     this.folderName=folder;
     this.folder=path.join(this.vault,folder);
     let current=this.vault;
-    for(const part of folder.split('/')){
+    for(const part of folder?folder.split('/'):[]){
       current=path.join(current,part);
-      if(!fs.existsSync(current))fs.mkdirSync(current,{mode:0o700});
+      if(!fs.existsSync(current)&&options.create!==false)fs.mkdirSync(current,{mode:0o700});
       const info=fs.lstatSync(current);
       if(!info.isDirectory()||info.isSymbolicLink()||fs.realpathSync(current)!==current)throw new Fault(409,'The notes folder must be a regular folder inside the vault.');
     }
@@ -188,7 +188,10 @@ class NoteStore {
 }
 function makeServer({vault, state, token, folder}) {
   if (typeof token !== 'string' || token.length < 32) throw new Error('A private access token is required.');
-  const store = new NoteStore(vault, state, folder), pairing = new Map();
+  const BrowserStore=require('./browser')(NoteStore,Fault,hash,atomicJSON,shortText);
+  const browser=new BrowserStore(vault,state), pairing=new Map();
+  const legacyFolder=folder||'Pebble', legacyId=legacyFolder==='Pebble'?hash(browser.vault):hash(browser.vault+'\0'+legacyFolder);
+  let legacy;const legacyStore=()=>legacy||(legacy=new NoteStore(vault,state,legacyFolder));
   let lastPhoneContact = null;
   const same = input => {const a=Buffer.from(input||''), b=Buffer.from('Bearer '+token);return a.length===b.length && crypto.timingSafeEqual(a,b);};
   const send = (res,status,value,type='application/json') => {
@@ -212,11 +215,11 @@ function makeServer({vault, state, token, folder}) {
       if (req.method==='POST' && url.pathname==='/pair') {
         const item = pairing.get(body.code); pairing.delete(body.code);
         if (!item || item.expires < Date.now()) throw new Fault(410,'This pairing code expired. Choose Connect Phone on the Mac again.');
-        return send(res,200,{gatewayURL:item.origin,gatewayToken:token,vaultId:store.vaultId});
+        return send(res,200,{gatewayURL:item.origin,gatewayToken:token,vaultId:legacyId,browserId:browser.vaultId});
       }
       if (req.headers['x-stonenotes-client']==='phone') lastPhoneContact=new Date().toISOString();
       if (req.method==='GET' && url.pathname==='/v1/health') {
-        store.checkFolder(); return send(res,200,{service:'StoneNotes',vaultId:store.vaultId,folder:store.folderName,lastPhoneContact});
+        browser.checked('',true); return send(res,200,{service:'StoneNotes',vaultId:legacyId,browserId:browser.vaultId,root:browser.root,folder:legacyFolder,lastPhoneContact});
       }
       if (req.method==='POST' && url.pathname==='/v1/pairing') {
         let origin;
@@ -229,20 +232,28 @@ function makeServer({vault, state, token, folder}) {
         return send(res,200,{url:origin.origin+'/pair#'+code});
       }
       const integer=(key)=>{const value=url.searchParams.get(key)||'0';if(!/^\d{1,7}$/.test(value))throw new Fault(400,'Invalid page.');return Number(value);};
-      if(req.method==='GET' && url.pathname==='/v1/notes') return send(res,200,store.list(integer('offset')));
-      if(req.method==='GET' && /^\/v1\/notes\/[a-f0-9]{64}$/.test(url.pathname)) return send(res,200,store.read(url.pathname.split('/').pop(),integer('page')));
+      if(req.method==='GET' && url.pathname==='/v1/notes') return send(res,200,legacyStore().list(integer('offset')));
+      if(req.method==='GET' && /^\/v1\/notes\/[a-f0-9]{64}$/.test(url.pathname)) return send(res,200,legacyStore().read(url.pathname.split('/').pop(),integer('page')));
       const mutation=url.pathname.match(/^\/v1\/notes\/([a-f0-9]{64})\/(append|delete)$/);
-      if(req.method==='POST'&&mutation)return send(res,200,mutation[2]==='append'?store.append(mutation[1],body):store.remove(mutation[1],body));
-      if(req.method==='POST' && url.pathname==='/v1/notes') return send(res,200,store.create(body));
+      if(req.method==='POST'&&mutation)return send(res,200,mutation[2]==='append'?legacyStore().append(mutation[1],body):legacyStore().remove(mutation[1],body));
+      if(req.method==='POST' && url.pathname==='/v1/notes') return send(res,200,legacyStore().create(body));
+      if(req.method==='GET'&&url.pathname==='/v2/browse')return send(res,200,browser.list(url.searchParams.get('folder')||'',integer('offset'),url.searchParams.get('snapshot')||''));
+      if(req.method==='GET'&&/^\/v2\/notes\/[a-f0-9]{64}$/.test(url.pathname))return send(res,200,browser.read(url.pathname.split('/').pop(),integer('page')));
+      if(req.method==='POST'&&url.pathname==='/v2/notes')return send(res,200,browser.create(body));
+      const action=url.pathname.match(/^\/v2\/items\/([a-f0-9]{64})\/(append|delete|pin)$/);
+      if(req.method==='POST'&&action){
+        if(body.vaultId!==browser.vaultId)throw new Fault(409,'The selected vault changed. Reload StoneNotes before making changes.');
+        return send(res,200,action[2]==='pin'?browser.pin(action[1],body.pinned):action[2]==='append'?browser.append(action[1],body):browser.remove(action[1],body));
+      }
       throw new Fault(404,'Unknown request.');
     } catch(error) { if(!res.headersSent)send(res,error.status||500,{error:error.status?error.message:'The Mac could not access the notes folder. Check the connector.'}); }
   });
   server.requestTimeout=10000; server.headersTimeout=10000;
   server.on('connection',socket=>socket.setTimeout(15000,()=>socket.destroy()));
-  return {server,store};
+  return {server,get store(){return legacyStore();},browser};
 }
 function pairingPage() {
-  return `<!doctype html><html><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pair StoneNotes</title><style>body{font:17px -apple-system,sans-serif;max-width:32rem;margin:3rem auto;padding:20px}button,textarea{font:inherit;padding:12px;width:100%;box-sizing:border-box;margin:10px 0}textarea{height:150px;font-size:13px}</style><h1>Pair StoneNotes</h1><p>Keep this page on your phone.</p><button id="connect">Get pairing details</button><textarea id="details" hidden readonly></textarea><button id="copy" hidden>Copy pairing details</button><p id="status">Then open Pebble → StoneNotes → Settings, paste the details, test, and save.</p><script>const code=location.hash.slice(1);history.replaceState(null,'',location.pathname);document.getElementById('connect').onclick=async()=>{try{const r=await fetch('/pair',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});const j=await r.json();if(!r.ok)throw Error(j.error);document.getElementById('details').value=JSON.stringify(j);document.getElementById('details').hidden=false;document.getElementById('copy').hidden=false;document.getElementById('connect').hidden=true;}catch(e){document.getElementById('status').textContent=e.message;}};document.getElementById('copy').onclick=async()=>{const t=document.getElementById('details');try{await navigator.clipboard.writeText(t.value);document.getElementById('status').textContent='Copied. Open Pebble → StoneNotes → Settings and paste.';}catch(e){t.focus();t.select();document.getElementById('status').textContent='Select and copy the pairing details above.';}};</script></html>`;
+  return `<!doctype html><html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pair StoneNotes</title><style>body{font:17px -apple-system,sans-serif;max-width:32rem;margin:3rem auto;padding:20px}button,textarea{font:inherit;padding:12px;width:100%;box-sizing:border-box;margin:10px 0}textarea{height:150px;font-size:13px}</style><h1>Pair StoneNotes</h1><p>Keep this page on your phone.</p><button id="connect">Get pairing details</button><textarea id="details" hidden readonly></textarea><button id="copy" hidden>Copy pairing details</button><p id="status">Then open Pebble → StoneNotes → Settings, paste the details, test, and save.</p><script>const code=location.hash.slice(1);history.replaceState(null,'',location.pathname);document.getElementById('connect').onclick=async()=>{try{const r=await fetch('/pair',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});const j=await r.json();if(!r.ok)throw Error(j.error);document.getElementById('details').value=JSON.stringify(j);document.getElementById('details').hidden=false;document.getElementById('copy').hidden=false;document.getElementById('connect').hidden=true;}catch(e){document.getElementById('status').textContent=e.message;}};document.getElementById('copy').onclick=async()=>{const t=document.getElementById('details');try{await navigator.clipboard.writeText(t.value);document.getElementById('status').textContent='Copied. Open Pebble → StoneNotes → Settings and paste.';}catch(e){t.focus();t.select();document.getElementById('status').textContent='Select and copy the pairing details above.';}};</script></html>`;
 }
 if(require.main===module) {
   const config=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));

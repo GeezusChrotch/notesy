@@ -47,7 +47,16 @@
       "THEME_SELECTION_TEXT": 14,
       "THEME_FONT": 15,
       "THEME_SIZE": 16,
-      "TARGET_ID": 17
+      "TARGET_ID": 17,
+      "FOLDER_ID": 18,
+      "PARENT_ID": 19,
+      "ENTRY_KIND": 20,
+      "PINNED": 21,
+      "SNAPSHOT": 22,
+      "TOTAL": 23,
+      "BUTTONS": 24,
+      "API": 25,
+      "VAULT_ID": 26
     },
     "resources": {
       "media": [
