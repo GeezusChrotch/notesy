@@ -103,7 +103,7 @@ function normalize(c,enhanced){
 }
 function rgb(hex){return parseInt(hex.slice(1),16);}
 function pebbleColor(hex){var n=rgb(hex);return 192|(Math.round(((n>>16)&255)/85)<<4)|(Math.round(((n>>8)&255)/85)<<2)|Math.round((n&255)/85);}
-function message(c,enhanced){var t=normalize(c,enhanced),n=rgb(t.selection),light=(((n>>16)&255)*299+((n>>8)&255)*587+(n&255)*114)/1000>=128;
+function message(c,enhanced){var t=normalize(c,enhanced),n=rgb(t.selection),light=(((n>>16)&255)*299+((n>>8)&255)*587+(n&255)*114)/1000>=150;
  return {TYPE:6,AUTO:c&&c.autoDictate?1:0,THEME_BACKGROUND:pebbleColor(t.background),THEME_TEXT:pebbleColor(t.text),THEME_SELECTION:pebbleColor(t.selection),THEME_SELECTION_TEXT:light?192:255,THEME_FONT:THEME_FONTS[t.font],THEME_SIZE:t.size};}
 module.exports={presets:presets,normalize:normalize,message:message,sizes:THEME_FONT_SIZES};
 function setup(initial,presets,sizes){
