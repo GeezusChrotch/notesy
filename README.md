@@ -8,7 +8,9 @@
 
 Notesy 1.0.0 is prepared for its first public release alongside
 [Organik Apps Pebble Connector](https://github.com/GeezusChrotch/organik-pebble-connector).
-Publication and store submission are pending; see [release status](docs/RELEASE_STATUS.md).
+[Install from the Pebble store](https://apps.repebble.com/a9d4515681c34b5088993dc6) or
+[download the 1.0.0 public beta](https://github.com/GeezusChrotch/notesy/releases/tag/v1.0.0).
+See [release status](docs/RELEASE_STATUS.md) for validation details.
 
 Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.0.0 · initial public beta.
 Choose the vault in **Organik Apps Pebble Connector**. No Obsidian plugin or dedicated notes folder

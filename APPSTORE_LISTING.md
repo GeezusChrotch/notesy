@@ -1,6 +1,6 @@
 # Notesy — Pebble Appstore submission
 
-Status: initial public beta 1.0.0; store submission tracked in docs/RELEASE_STATUS.md.
+Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — initial public beta 1.0.0.
 
 - Name: Notesy
 - Developer: Organik Apps
