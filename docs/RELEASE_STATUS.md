@@ -25,7 +25,7 @@ or “Reminderz Connector.” The migration guides point users to the correspond
 See [RELEASING](../RELEASING.md) for publication order and rollback. Do not advertise the source
 repositories or installer links as live until those resources actually exist.
 
-Release PBW SHA-256: `8475c971fc75aa2e979f924b66d32563156e5ef69a6d430631a3b9b33faccb94`.
+Release PBW SHA-256: `05792b06560037db15dc34bd6339692080b849f0a88f54289232ca250194f295`.
 The source and artwork archives have their own hashes in `dist/SHA256SUMS`. The release page was
 visually checked at a narrow browser width; local documentation links and native screenshot/icon
 sizes were verified. Notesy’s store description is 1,253 characters. No new live vault edits or

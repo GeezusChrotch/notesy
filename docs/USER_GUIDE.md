@@ -19,8 +19,14 @@ filenames are preserved. Retry receipts prevent a delayed connection from saving
 
 ## Quick Dictate and Stitch
 
-**Quick Dictate** records one section. **Stitch** joins multiple recordings into the same note.
-Pebble allows up to 15 seconds per recording. Accept each transcription with Select; Stitch saves
+Pebble limits each recording to **15 seconds**, and Notesy cannot extend that system limit.
+That is why there are two choices:
+
+- **Quick Dictate** is for one short thought, such as a reminder or shopping item. Record once, up to 15 seconds.
+- **Stitch** is for a longer thought, such as a journal entry or meeting follow-up. It joins multiple recordings, each up to 15 seconds, into the same note.
+
+Both work for new notes and appending. Stitch does not make one continuous recording.
+Accept each transcription with Select; Stitch saves
 that section, gives a short vibration, then starts listening for the next one. There is a brief
 saving/transcription gap between sections. Sections are appended in order as separate paragraphs.
 

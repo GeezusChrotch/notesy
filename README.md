@@ -39,8 +39,10 @@ loads the adjacent batch automatically. Folder listings are stable while paging,
 change in Obsidian. Use Refresh in Actions to see changes; listings expire after 30 minutes.
 Notes scroll normally and fetch more text at the edge of the loaded chunk.
 
-**New note** offers **Quick Dictate** (one recording) and **Stitch** (successive recordings joined
-to one note). Each recording lasts up to 15 seconds. Stitch saves each accepted section before
+**Why two dictation options?** Pebble limits each recording to 15 seconds, and Notesy cannot
+extend that system limit. **Quick Dictate** is for one short thought. **Stitch** is for longer
+notes: it joins multiple recordings of up to 15 seconds into the same note. Both work for new
+notes and appending. Stitch saves each accepted section before
 listening again; Back finishes, keeping earlier sections. Both modes also work for Append, and
 connection failures stop recording while retaining the pending section. See the
 [dictation guide](docs/USER_GUIDE.md#quick-dictate-and-stitch).

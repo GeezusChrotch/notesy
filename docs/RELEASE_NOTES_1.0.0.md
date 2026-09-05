@@ -3,7 +3,8 @@
 Your Obsidian vault, on your wrist. Notesy is a free MIT open-source app from Organik Apps for
 Pebble Time and Pebble Time 2.
 
-Quick Dictate captures one recording; Stitch joins successive 15-second recordings into the same
+Pebble limits each recording to 15 seconds. Quick Dictate is for one short thought; Stitch
+works around that limit by joining multiple recordings into the same
 note, saving each accepted section before continuing. Both work for new notes and appending.
 Press Back to finish and keep the accepted sections. You can also dictate a fuzzy search. Browse your vault's
 folders and root notes, pin favorites, hide folders, check Markdown tasks, and view local pictures
