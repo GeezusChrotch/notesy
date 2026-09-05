@@ -4,7 +4,7 @@
 typedef struct { char id[65]; char title[112]; } Note;
 static Window *s_main, *s_reader, *s_actions;
 static MenuLayer *s_action_menu;
-static bool s_confirm_delete;
+static bool s_confirm_delete, s_scroll_to_end;
 static char s_capture_target[65],s_draft_target[65],s_last_append_id[96],s_last_append_target[65],s_delete_id[96];
 static MenuLayer *s_menu;
 static ScrollLayer *s_scroll;
@@ -35,7 +35,8 @@ static void set_status(const char *text) {
 }
 static void clear_timeout(void) { if (s_timeout) { app_timer_cancel(s_timeout); s_timeout = NULL; } }
 static void timed_out(void *unused) {
-  s_timeout = NULL; s_loading = false;
+  s_timeout = NULL; s_loading = false;s_scroll_to_end=false;
+  if(s_page_label)text_layer_set_text(s_page_label,"No reply · scroll to retry");
   set_status(s_pending ? "Draft kept · select to retry" : "No reply · hold Down to refresh");
 }
 static void send_command(int command, const char *id, int page, const char *text) {
@@ -215,32 +216,42 @@ static void render_note(void) {
   GSize size = text_layer_get_content_size(s_body);
   layer_set_frame(text_layer_get_layer(s_body), GRect(4, 0, bounds.size.w-8, size.h+10));
   scroll_layer_set_content_size(s_scroll, GSize(bounds.size.w, size.h+10));
-  scroll_layer_set_content_offset(s_scroll, GPointZero, false);
+  int end=size.h+10-layer_get_frame(scroll_layer_get_layer(s_scroll)).size.h;
+  scroll_layer_set_content_offset(s_scroll, s_scroll_to_end&&end>0?GPoint(0,-end):GPointZero, false);
+  s_scroll_to_end=false;
   snprintf(s_heading_title,sizeof(s_heading_title),"%s",note_title(s_title,NULL,0));
   text_layer_set_text(s_heading, s_heading_title);
-  static char label[64];
-  snprintf(label, sizeof(label), "%d/%d · Select: actions", s_page+1, s_pages);
-  text_layer_set_text(s_page_label, label);
+  text_layer_set_text(s_page_label, "Select: actions / Hold: append");
 }
-static void next_page(ClickRecognizerRef recognizer, void *context) {
-  if (s_loading) return;
-  if (s_page+1<s_pages) { s_loading=true; send_command(2, s_current_id, s_page+1, NULL); }
-  else vibes_short_pulse();
-}
-static void previous_page(ClickRecognizerRef recognizer, void *context) {
-  if (s_loading) return;
-  if (s_pages<=1) return;
-  if (s_page>0) { s_loading=true; send_command(2, s_current_id, s_page-1, NULL); }
+static void scroll_note(ClickRecognizerRef recognizer, void *context) {
+  if(s_loading||!s_scroll)return;
+  bool down=click_recognizer_get_button_id(recognizer)==BUTTON_ID_DOWN;
+  GPoint offset=scroll_layer_get_content_offset(s_scroll);
+  int content=scroll_layer_get_content_size(s_scroll).h;
+  int visible=layer_get_frame(scroll_layer_get_layer(s_scroll)).size.h;
+  int bottom=content>visible?visible-content:0;
+  if((down&&offset.y<=bottom)||(!down&&offset.y>=0)){
+    int target=s_page+(down?1:-1);
+    if(target<0||target>=s_pages)return;
+    s_scroll_to_end=!down;s_loading=true;
+    text_layer_set_text(s_page_label,"Loading more…");
+    send_command(2,s_current_id,target,NULL);return;
+  }
+  int step=s_theme_size+8;
+  int y=offset.y+(down?-step:step);if(y<bottom)y=bottom;if(y>0)y=0;
+  scroll_layer_set_content_offset(s_scroll,GPoint(0,y),false);
 }
 static void open_actions(ClickRecognizerRef recognizer, void *context);
 static void append_click(ClickRecognizerRef recognizer, void *context){dictate();}
 static void reader_clicks(void *context) {
+  window_single_repeating_click_subscribe(BUTTON_ID_UP,120,scroll_note);
+  window_single_repeating_click_subscribe(BUTTON_ID_DOWN,120,scroll_note);
   window_single_click_subscribe(BUTTON_ID_SELECT, open_actions);
   window_long_click_subscribe(BUTTON_ID_SELECT, 600, append_click, NULL);
 }
-static uint16_t action_rows(MenuLayer *menu,uint16_t section,void *context){return s_confirm_delete?2:5;}
+static uint16_t action_rows(MenuLayer *menu,uint16_t section,void *context){return 2;}
 static void action_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *context){
-  const char *names[]={"Append dictation","Next page","Previous page","Delete note","Back"};
+  const char *names[]={"Append dictation","Delete note"};
   if(s_confirm_delete)menu_cell_basic_draw(ctx,cell,index->row?"Move to trash":"Cancel",index->row?"Removes this note":s_heading_title,NULL);
   else menu_cell_basic_draw(ctx,cell,names[index->row],index->row==0?"Or hold Select in note":NULL,NULL);
 }
@@ -253,9 +264,9 @@ static void action_selected(MenuLayer *menu,MenuIndex *index,void *context){
     window_stack_pop(true);s_loading=true;send_command(5,s_current_id,0,s_delete_id);
     text_layer_set_text(s_page_label,"Deleting…");return;
   }
-  if(row==3){s_confirm_delete=true;menu_layer_reload_data(s_action_menu);menu_layer_set_selected_index(s_action_menu,MenuIndex(0,0),MenuRowAlignTop,false);return;}
+  if(row==1){s_confirm_delete=true;menu_layer_reload_data(s_action_menu);menu_layer_set_selected_index(s_action_menu,MenuIndex(0,0),MenuRowAlignTop,false);return;}
   window_stack_pop(true);
-  if(row==0)dictate();else if(row==1)next_page(NULL,NULL);else if(row==2)previous_page(NULL,NULL);
+  if(row==0)dictate();
 }
 static void actions_load(Window *window){
   s_action_menu=menu_layer_create(layer_get_bounds(window_get_root_layer(window)));
@@ -294,7 +305,7 @@ static void select_row(MenuLayer *menu, MenuIndex *index, void *context) {
   if (row==0) { dictate(); return; }
   if (s_loading) return;
   if (row<=s_count) {
-    s_delete_id[0]=0;
+    s_delete_id[0]=0;s_scroll_to_end=false;
     snprintf(s_current_id,sizeof(s_current_id),"%s",s_notes[row-1].id);
     snprintf(s_title,sizeof(s_title),"%s",s_notes[row-1].title);
     snprintf(s_body_text,sizeof(s_body_text),"Loading…"); s_page=0; s_pages=1;
@@ -355,7 +366,7 @@ static void inbox(DictionaryIterator *iter, void *context) {
   } else if(kind==5||kind==9) {
     if(kind==9){clear_timeout();s_loading=false;}
     if(text)set_status(text->value->cstring);
-    if(kind==9&&s_body){snprintf(s_body_text,sizeof(s_body_text),"%s",s_status);render_note();}
+    if(kind==9&&s_body){s_scroll_to_end=false;text_layer_set_text(s_page_label,s_status);}
   }
 }
 static void outbox_failed(DictionaryIterator *iter, AppMessageResult reason, void *context) { clear_timeout();s_loading=false;set_status(s_pending?"Draft kept · select to retry":"Phone unavailable · retry"); }

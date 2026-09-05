@@ -10,7 +10,7 @@ the author's vault, account, network, or credentials is embedded in the shared a
 
 - **Select New note:** dictate and confirm. Hold Select in the menu to capture from any row.
 - **Up / Down:** browse notes or scroll the open note.
-- **Select a note:** read it. Hold Select appends dictation to that note. Select opens actions: append, next/previous page, or delete. Deletion requires confirmation and moves the note to `Pebble/.trash`.
+- **Select a note:** read it. Hold Select appends dictation to that note. Up/Down scroll through the note, loading more text as needed. Select opens actions: append or delete. Use the physical Back button to leave. Deletion requires confirmation and moves the note to `Pebble/.trash`.
 - **Back:** return to the list. **More notes** advances the list in batches of 15.
 - **Refresh**, or hold Down in the menu: return to the newest notes.
 
