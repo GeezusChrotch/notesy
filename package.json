@@ -1,6 +1,6 @@
 {
   "name": "notesy",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "Organik Apps",
   "description": "Dictate and read Obsidian notes on Pebble",
   "license": "MIT",
@@ -12,7 +12,8 @@
     "test": "node --test tests/*.test.js",
     "build": "pebble build",
     "check": "npm test && node --check src/pkjs/index.js && pebble build",
-    "package": "npm run check && python3 scripts/package-release.py"
+    "package": "npm run check && python3 scripts/package-release.py",
+    "release:kit": "python3 scripts/package-release-kit.py"
   },
   "pebble": {
     "displayName": "Notesy",
@@ -67,6 +68,12 @@
     },
     "resources": {
       "media": [
+        {
+          "type": "bitmap",
+          "name": "NOTESY_MENU_ICON",
+          "file": "images/notesy-menu-icon.png",
+          "menuIcon": true
+        },
         {
           "type": "font",
           "name": "INTER_14",
@@ -294,5 +301,13 @@
         }
       ]
     }
+  },
+  "homepage": "https://github.com/GeezusChrotch/notesy",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GeezusChrotch/notesy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GeezusChrotch/notesy/issues"
   }
 }

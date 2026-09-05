@@ -2,9 +2,9 @@
 Never distribute or install this fixture package on a physical watch.
 """
 from pathlib import Path
-import zipfile
+import zipfile,json
 root=Path(__file__).resolve().parents[1]
-source=root/'dist/Notesy-0.1.0.pbw';destination=root/'build/Notesy-fixture.pbw'
+source=root/'dist'/('Notesy-'+json.loads((root/'package.json').read_text())['version']+'.pbw');destination=root/'build/Notesy-fixture.pbw'
 with zipfile.ZipFile(source) as original,zipfile.ZipFile(destination,'w',zipfile.ZIP_DEFLATED) as fixture:
     for entry in original.infolist():
         content=b'Pebble.addEventListener("ready",function(){});' if entry.filename=='pebble-js-app.js' else original.read(entry.filename)

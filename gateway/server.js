@@ -205,7 +205,7 @@ function makeServer({vault, state, token, folder}) {
     try {
       const url = new URL(req.url, 'http://localhost');
       if (req.method==='OPTIONS') return send(res,204,{});
-      if (req.method==='GET' && url.pathname==='/health') return send(res,200,{service:'StoneNotes',displayName:'Notesy',version:'0.1.0'});
+      if (req.method==='GET' && url.pathname==='/health') return send(res,200,{service:'StoneNotes',displayName:'Notesy',version:'1.0.0'});
       if (req.method==='GET' && url.pathname==='/pair') return send(res,200,pairingPage(),'text/html');
       if (!(req.method==='POST' && url.pathname==='/pair') && !same(req.headers.authorization)) throw new Fault(401,'Open Notesy settings on your phone and pair with the Mac connector.');
       let body = {}, bytes = 0, chunks = [];

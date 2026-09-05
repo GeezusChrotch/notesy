@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Keep SDK debug source maps in the local build, not in the shared watch package."""
 from pathlib import Path
-import zipfile,re
+import zipfile,re,json
 root=Path(__file__).resolve().parents[1]
-target=root/'dist/Notesy-0.1.0.pbw'
+target=root/'dist'/('Notesy-'+json.loads((root/'package.json').read_text())['version']+'.pbw')
 target.parent.mkdir(exist_ok=True)
 with zipfile.ZipFile(root/'build/StoneNotes.pbw') as source, zipfile.ZipFile(target,'w',compression=zipfile.ZIP_DEFLATED) as output:
     for info in source.infolist():

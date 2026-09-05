@@ -1,0 +1,17 @@
+# Changelog
+
+## 1.0.0 — release candidate
+
+Initial public release preparation. Not yet published.
+
+- Browse the entire Obsidian vault, including root notes, with automatic list paging.
+- Dictate new notes, append to open notes, and dictate fuzzy searches.
+- Pin folders and notes, hide selected folder trees, and delete Markdown notes with local recovery.
+- Check and uncheck Markdown tasks directly from the watch.
+- View local pictures and Excalidraw previews, including compressed drawings and ordinary `.md` names.
+- Customize all side-button short/long presses, Pome themes, fonts, colors and marquee speed.
+- Stable photo layout and full scrolling through oversized paragraphs.
+- A new violet note-and-wave icon and complete setup, usage and troubleshooting guides.
+- Free MIT open-source release with the unified Organik Apps Pebble Connector for macOS.
+
+Existing development installations keep their watch UUID, pairing, settings and queued captures.

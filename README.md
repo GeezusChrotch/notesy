@@ -1,6 +1,16 @@
 # Notesy
 
-Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 0.1.0.
+<img src="appstore-assets/notesy-icon-large.png" width="96" height="96" alt="Notesy: an ivory note and voice wave on violet">
+
+**Your Obsidian vault, on your wrist. Free and MIT open source.**
+
+[Install](docs/INSTALL.md) · [User guide](docs/USER_GUIDE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Privacy](PRIVACY.md) · [Release preparation](RELEASING.md)
+
+Notesy 1.0.0 is prepared for its first public release alongside
+[Organik Apps Pebble Connector](https://github.com/GeezusChrotch/organik-pebble-connector).
+Publication and store submission are pending; see [release status](docs/RELEASE_STATUS.md).
+
+Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.0.0.
 Choose the vault in **Organik Apps Pebble Connector**. No Obsidian plugin or dedicated notes folder
 is required. Ordinary Markdown notes created in Obsidian appear alongside watch-created notes.
 No personal vault, account, network address or credential is embedded in the shared app.
@@ -81,7 +91,7 @@ on your Mac. Source drawings are never rewritten; use New note alongside a drawi
 
 Choose your vault in the Mac connector, start Notesy, start its private connection, and select
 Connect phone. Scan the one-time QR code. On the phone, copy the pairing details into
-Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-0.1.0.pbw` on the watch.
+Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-1.0.0.pbw` on the watch.
 The connector requires macOS 14+ and bundles its runtime. Keep Tailscale connected on both devices.
 
 For an existing Notesy installation, update both the connector and watch app, then reopen
@@ -140,7 +150,7 @@ API remains compatible with old queued notes. The Mac build bundles the server m
 Renderer versions and dependency overrides are pinned in renderer/package-lock.json. The renderer
 blocks HTTP(S) requests and only receives the selected local image or drawing.
 
-Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-0.1.0.pbw` for distribution; the latter
+Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-1.0.0.pbw` for distribution; the latter
 omits SDK source maps. `tests/watch-emulator.py` exercises the compiled C app against the disposable
 vault in `tests/emulator-fixture.js`; it requires a fixture PBW with inert phone JS, never a physical
 watch. Phone transport and settings have separate automated tests. See `PRIVACY.md` for data handling.
@@ -158,6 +168,6 @@ WATCH_TEST_RICH_ONLY=1 python tests/watch-emulator.py
 
 Use only the emulator fixture for those commands. The dictation check supplies simulated
 transcripts through the SDK voice protocol; it does not verify a real microphone or phone speech
-service. Normal watch installations must use `dist/Notesy-0.1.0.pbw`.
+service. Normal watch installations must use `dist/Notesy-1.0.0.pbw`.
 
 Notesy was previously named StoneNotes. Its watch UUID, saved settings, queues, pins and pairing remain compatible. Internal storage keys and the wire service ID keep their original names; existing notes are not renamed or rewritten.

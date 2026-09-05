@@ -82,7 +82,7 @@ def double_back():
 def shot(name):
  png.from_array(Screenshot(pebble).grab_image(),'RGB;8').save(str(ROOT/'build'/name))
 def rich_checks():
- settings();click('down');click('select');assert calls[-1][0]==2 and calls[-1][25]==3;shot('rich-tasks.png')
+ settings();shot('rich-root.png');click('down');click('select');assert calls[-1][0]==2 and calls[-1][25]==3;shot('rich-tasks.png')
  click('down');click('select');assert calls[-1][0]==8 and calls[-1][30]==1;shot('rich-task-checked.png')
  assert http('/v3/notes/'+info['note'])['blocks'][1]['checked']
  click('select');assert calls[-1][30]==0 and not http('/v3/notes/'+info['note'])['blocks'][1]['checked']
