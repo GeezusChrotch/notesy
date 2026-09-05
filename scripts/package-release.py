@@ -3,7 +3,7 @@
 from pathlib import Path
 import zipfile,re
 root=Path(__file__).resolve().parents[1]
-target=root/'dist/StoneNotes-0.1.0.pbw'
+target=root/'dist/Notesy-0.1.0.pbw'
 target.parent.mkdir(exist_ok=True)
 with zipfile.ZipFile(root/'build/StoneNotes.pbw') as source, zipfile.ZipFile(target,'w',compression=zipfile.ZIP_DEFLATED) as output:
     for info in source.infolist():
@@ -13,4 +13,4 @@ with zipfile.ZipFile(root/'build/StoneNotes.pbw') as source, zipfile.ZipFile(tar
         output.writestr(info,data)
 with zipfile.ZipFile(target) as package:
     if package.testzip():raise SystemExit('Release archive failed validation.')
-print('Created public StoneNotes package without SDK debug source maps.')
+print('Created public Notesy package without SDK debug source maps.')

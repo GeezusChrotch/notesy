@@ -13,7 +13,7 @@ function Delivery(storage, send, notify) {
     if (state.done.indexOf(id) >= 0) { notify('saved', id); return; }
     var existing=state.pending.filter(function(p) { return p.id === id; })[0];
     if (existing) { if(existing.text!==text||(existing.targetId||'')!==targetId||(existing.api||1)!==api||(existing.folderId||'')!==folderId)throw Error('Draft ID conflict. Your original pending note was preserved.');notify('queued', id); return; }
-    if (!config || !config.vaultId) throw Error('Pair StoneNotes in phone Settings first.');
+    if (!config || !config.vaultId) throw Error('Pair Notesy in phone Settings first.');
     if (state.pending.length >= 20) throw Error('20 notes are waiting. Connect to your Mac before adding more.');
     commit({pending:state.pending.concat([{id:id,text:text,targetId:targetId,vaultId:vaultId,origin:config.gatewayURL,api:api,folderId:folderId}]),done:state.done});
     notify('queued', id);

@@ -1,5 +1,5 @@
 """Native C + disposable gateway integration. Run with the Pebble tool's Python.
-Install build/StoneNotes-fixture.pbw (same C binary, inert phone JS) in emulator first.
+Install build/Notesy-fixture.pbw (same C binary, inert phone JS) in emulator first.
 Phone JS is covered separately by phone.test.js. This never connects to a real watch.
 """
 import json,queue,subprocess,threading,time,uuid,urllib.request,urllib.parse,os

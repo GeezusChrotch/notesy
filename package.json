@@ -1,5 +1,5 @@
 {
-  "name": "stonenotes",
+  "name": "notesy",
   "version": "0.1.0",
   "author": "Organik Apps",
   "description": "Dictate and read Obsidian notes on Pebble",
@@ -15,7 +15,7 @@
     "package": "npm run check && python3 scripts/package-release.py"
   },
   "pebble": {
-    "displayName": "StoneNotes",
+    "displayName": "Notesy",
     "uuid": "b9270b92-5e0e-491b-9993-165f849d7250",
     "sdkVersion": "3",
     "enableMultiJS": true,

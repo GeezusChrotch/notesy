@@ -70,7 +70,7 @@ static void send_command(int command, const char *id, int page, const char *text
   clear_timeout(); s_timeout = app_timer_register(18000, timed_out, NULL);
 }
 static void load_notes(int offset) {
-  if (!s_ready||!s_browser) { set_status("Update the Mac connector, then reopen StoneNotes"); return; }
+  if (!s_ready||!s_browser) { set_status("Update the Mac connector, then reopen Notesy"); return; }
   s_loading = true;s_incoming_count=-1;
   set_status("Loading folder…"); send_command(1, NULL, offset, NULL);
 }

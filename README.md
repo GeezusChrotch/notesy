@@ -1,4 +1,4 @@
-# StoneNotes
+# Notesy
 
 Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 0.1.0.
 Choose the vault in **Organik Apps Pebble Connector**. No Obsidian plugin or dedicated notes folder
@@ -40,13 +40,13 @@ pinned again at its new location; missing pins are hidden.
 
 ## Setup and upgrades
 
-Choose your vault in the Mac connector, start StoneNotes, start its private connection, and select
+Choose your vault in the Mac connector, start Notesy, start its private connection, and select
 Connect phone. Scan the one-time QR code. On the phone, copy the pairing details into
-Pebble → StoneNotes → Settings, test, and save. Install `dist/StoneNotes-0.1.0.pbw` on the watch.
+Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-0.1.0.pbw` on the watch.
 The connector requires macOS 14+ and bundles its runtime. Keep Tailscale connected on both devices.
 
-For an existing StoneNotes installation, update both the connector and watch app, then reopen
-StoneNotes. The phone learns vault browsing support using its existing pairing. Old queued
+For an existing Notesy installation, update both the connector and watch app, then reopen
+Notesy. The phone learns vault browsing support using its existing pairing. Old queued
 captures retain their original dedicated folder through the legacy API; existing files are not
 moved. New captures record their folder and vault when dictated, so navigating elsewhere cannot
 redirect pending text. A watch draft remains until the phone stores it; the phone retains up to
@@ -70,7 +70,7 @@ and receipts; invisible append markers prevent duplicate retries.
 - Dictation needs a microphone-equipped Pebble and the paired phone’s working transcription
   service. Captures are limited to 767 UTF-8 bytes; longer text is rejected, never truncated.
 - The Mac must be awake for reading and delivery. Pending captures retry while the phone runs
-  StoneNotes, including when reopened; this is not continuous iPhone background execution.
+  Notesy, including when reopened; this is not continuous iPhone background execution.
 - Regular Markdown notes up to 1 MB are supported. Simple Markdown renders as text; images,
   attachments, embeds and plugin-generated views are not rendered. Font glyph coverage varies.
 - Hidden paths and symbolic links are excluded. Browsing does not recursively scan the vault:
@@ -92,7 +92,7 @@ transport and durable delivery. `gateway/server.js` hosts the loopback API;
 `gateway/browser.js` implements vault navigation, pins and explicit destinations while the v1
 API remains compatible with old queued notes. The Mac build bundles both server modules.
 
-Use `build/StoneNotes.pbw` for debugging and `dist/StoneNotes-0.1.0.pbw` for distribution; the latter
+Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-0.1.0.pbw` for distribution; the latter
 omits SDK source maps. `tests/watch-emulator.py` exercises the compiled C app against the disposable
 vault in `tests/emulator-fixture.js`; it requires a fixture PBW with inert phone JS, never a physical
 watch. Phone transport and settings have separate automated tests. See `PRIVACY.md` for data handling.
@@ -101,11 +101,13 @@ To run the emulator checks with the Python environment that contains `pebble_too
 
 ```sh
 python3 scripts/emulator-fixture.py
-pebble install --emulator emery build/StoneNotes-fixture.pbw
+pebble install --emulator emery build/Notesy-fixture.pbw
 python tests/watch-emulator.py
 WATCH_TEST_DICTATION_ONLY=1 python tests/watch-emulator.py
 ```
 
 Use only the emulator fixture for those commands. The dictation check supplies simulated
 transcripts through the SDK voice protocol; it does not verify a real microphone or phone speech
-service. Normal watch installations must use `dist/StoneNotes-0.1.0.pbw`.
+service. Normal watch installations must use `dist/Notesy-0.1.0.pbw`.
+
+Notesy was previously named StoneNotes. Its watch UUID, saved settings, queues, pins and pairing remain compatible. Internal storage keys and the wire service ID keep their original names; existing notes are not renamed or rewritten.
