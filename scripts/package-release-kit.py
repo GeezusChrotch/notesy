@@ -12,7 +12,7 @@ files=[]
 for folder in roots:
  for p in (root/folder).rglob('*'):
   if p.is_file() and not any(x in {'node_modules','dist','build','__pycache__','.DS_Store'} for x in p.relative_to(root).parts):files.append(p)
-files += [root/p for p in ['README.md','LICENSE','PRIVACY.md','THIRD_PARTY_NOTICES.md','CONTRIBUTING.md','SECURITY.md','CHANGELOG.md','RELEASING.md','APPSTORE_LISTING.md','package.json','wscript','.gitignore','index.html']]
+files += [root/p for p in ['README.md','ACKNOWLEDGMENTS.md','LICENSE','PRIVACY.md','THIRD_PARTY_NOTICES.md','CONTRIBUTING.md','SECURITY.md','CHANGELOG.md','RELEASING.md','APPSTORE_LISTING.md','package.json','wscript','.gitignore','index.html']]
 for p in files:
  data=p.read_bytes()
  if p.suffix.lower() not in {'.png','.ttf','.woff','.woff2','.otf'}:

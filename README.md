@@ -171,3 +171,10 @@ transcripts through the SDK voice protocol; it does not verify a real microphone
 service. Normal watch installations must use `dist/Notesy-1.0.0.pbw`.
 
 Notesy was previously named StoneNotes. Its watch UUID, saved settings, queues, pins and pairing remain compatible. Internal storage keys and the wire service ID keep their original names; existing notes are not renamed or rewritten.
+
+## Thank you
+
+Thank you to ChatGPT and Codex, especially ChatGPT 5.6 Sol and ChatGPT 6 Astra, and to the people at OpenAI who build these tools, for allowing a nerd with an idea to make cool stuff.
+
+We also thank the developers and communities behind the apps, libraries, fonts and tools we build
+on. [Full acknowledgments](ACKNOWLEDGMENTS.md).

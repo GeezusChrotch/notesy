@@ -28,3 +28,9 @@ Excalidraw detection, and conversion failures for mostly white drawings.
 
 Free software under MIT, with third-party notices included. No Notesy account, analytics or
 subscription. Independent of Obsidian, Pebble and Tailscale.
+
+## With thanks
+
+Thank you to ChatGPT and Codex, especially ChatGPT 5.6 Sol and ChatGPT 6 Astra, and to the people at OpenAI who build these tools, for allowing a nerd with an idea to make cool stuff.
+
+[Thank you to the developers and projects we build on](../ACKNOWLEDGMENTS.md).
