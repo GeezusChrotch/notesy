@@ -1,0 +1,6 @@
+build/
+.lock-waf*
+.waf-*/
+node_modules/
+dist/
+.DS_Store

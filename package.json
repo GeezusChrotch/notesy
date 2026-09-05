@@ -1,0 +1,16 @@
+{
+  "name":"stonenotes",
+  "version":"0.1.0",
+  "author":"Organik Apps",
+  "description":"Dictate and read Obsidian notes on Pebble",
+  "license":"MIT",
+  "private":true,
+  "keywords":["pebble-app"],
+  "scripts":{"test":"node --test tests/*.test.js","build":"pebble build","check":"npm test && node --check src/pkjs/index.js && pebble build","package":"npm run check && python3 scripts/package-release.py"},
+  "pebble":{
+    "displayName":"StoneNotes","uuid":"b9270b92-5e0e-491b-9993-165f849d7250","sdkVersion":"3","enableMultiJS":true,
+    "capabilities":["configurable"],"targetPlatforms":["basalt","emery"],"watchapp":{"watchface":false},
+    "messageKeys":{"COMMAND":0,"TYPE":1,"REQUEST":2,"NOTE_ID":3,"TITLE":4,"TEXT":5,"PAGE":6,"COUNT":7,"INDEX":8,"THEME":9,"AUTO":10},
+    "resources":{"media":[]}
+  }
+}

@@ -1,0 +1,65 @@
+<style>
+#organik-mock{--oa-bg:light-dark(#fafafa,#202123);--oa-side:light-dark(#ededee,#292a2d);--oa-panel:light-dark(#fff,#2b2c30);--oa-text:light-dark(#202024,#f3f3f5);--oa-muted:light-dark(#626269,#bbbcc4);--oa-line:light-dark(#dddde2,#45464e);--oa-accent:light-dark(#246649,#93d8b3);font:14px -apple-system,BlinkMacSystemFont,sans-serif;color:var(--oa-text);background:var(--oa-bg);border:1px solid var(--oa-line);border-radius:12px;overflow:hidden}
+#organik-mock *{box-sizing:border-box}#organik-mock .oa-chrome{padding:16px 20px;background:var(--oa-side);border-bottom:1px solid var(--oa-line);display:flex;gap:14px;align-items:center}#organik-mock .oa-dots{letter-spacing:3px;color:var(--oa-muted)}#organik-mock .oa-caption{margin-left:auto;color:var(--oa-muted);font-size:12px}#organik-mock .oa-layout{display:grid;grid-template-columns:194px 1fr;min-height:440px}#organik-mock nav{background:var(--oa-side);padding:18px 10px;border-right:1px solid var(--oa-line)}#organik-mock button{font:inherit;color:inherit;cursor:pointer}#organik-mock nav button{display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:11px 12px;border:0;border-radius:7px;background:transparent;margin-bottom:3px}#organik-mock nav button[aria-current=page]{background:var(--oa-panel)}#organik-mock .oa-group{margin:24px 12px 10px;color:var(--oa-muted);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em}#organik-mock main{padding:28px;min-width:0}#organik-mock h2{font-size:24px;font-weight:500;margin:0 0 8px}#organik-mock p{color:var(--oa-muted);line-height:1.5;margin:0 0 22px}#organik-mock .oa-section{background:var(--oa-panel);border:1px solid var(--oa-line);border-radius:10px;overflow:hidden;margin-bottom:18px}#organik-mock .oa-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 17px;border-bottom:1px solid var(--oa-line)}#organik-mock .oa-row:last-child{border-bottom:0}#organik-mock .oa-small{display:block;color:var(--oa-muted);font-size:12px;margin-top:5px;line-height:1.45}#organik-mock .oa-state{color:var(--oa-accent);white-space:nowrap;font-size:12px}#organik-mock .oa-action{background:var(--oa-panel);border:1px solid var(--oa-line);border-radius:6px;padding:7px 12px;white-space:nowrap}#organik-mock .oa-primary{background:var(--oa-accent);color:var(--oa-bg);border-color:var(--oa-accent)}#organik-mock .oa-actions{display:flex;gap:10px;flex-wrap:wrap}#organik-mock .oa-foot{font-size:12px;color:var(--oa-muted);margin-top:20px;line-height:1.5}#organik-mock .oa-name{display:flex;align-items:center;gap:12px}#organik-mock .oa-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:7px;background:var(--oa-side)}#organik-mock .oa-switch{accent-color:var(--oa-accent);width:18px;height:18px}#organik-mock .oa-navdot{margin-left:auto;color:var(--oa-accent)}#organik-mock[data-navigation=tabs] .oa-layout{display:block}#organik-mock[data-navigation=tabs] nav{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--oa-line);padding:8px}#organik-mock[data-navigation=tabs] nav button{width:auto;white-space:nowrap}#organik-mock[data-navigation=tabs] .oa-group{display:none}
+@media(max-width:600px){#organik-mock .oa-layout{grid-template-columns:1fr}#organik-mock nav{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--oa-line);padding:8px}#organik-mock nav button{width:auto;white-space:nowrap}#organik-mock .oa-group,#organik-mock .oa-navdot{display:none}#organik-mock main{padding:18px}#organik-mock .oa-row{gap:10px;padding:13px}#organik-mock .oa-caption{max-width:90px;text-align:right}#organik-mock .oa-state{white-space:normal;text-align:right}}
+</style>
+<div id="organik-mock" aria-label="Organik Apps Pebble Connector interface concept">
+  <div class="oa-chrome"><span class="oa-dots" aria-hidden="true">● ● ●</span><span>Organik Apps <strong>Pebble Connector</strong></span><span class="oa-caption">Interface concept · sample states</span></div>
+  <div class="oa-layout">
+    <nav aria-label="Connector pages">
+      <button type="button" data-page="Overview" aria-current="page"><i data-lucide="layout-dashboard" aria-hidden="true"></i>Overview</button>
+      <div class="oa-group">Your Pebble apps</div>
+      <button type="button" data-page="StoneNotes"><i data-lucide="notebook-pen" aria-hidden="true"></i>StoneNotes<span class="oa-navdot">●</span></button>
+      <button type="button" data-page="Beepster"><i data-lucide="messages-square" aria-hidden="true"></i>Beepster<span class="oa-navdot">●</span></button>
+      <button type="button" data-page="Reminderz"><i data-lucide="list-checks" aria-hidden="true"></i>Reminderz<span class="oa-navdot">●</span></button>
+      <button type="button" data-page="Pome"><i data-lucide="house" aria-hidden="true"></i>Pome</button>
+      <button type="button" data-page="PebClaw"><i data-lucide="bot" aria-hidden="true"></i>PebClaw</button>
+    </nav>
+    <main id="oa-main" aria-live="polite"></main>
+  </div>
+</div>
+<script>
+(()=>{
+ const root=document.getElementById('organik-mock');
+ const main=root.querySelector('#oa-main');
+ const design={navigation:'sidebar'};
+ let current='Overview';
+ const enabled={StoneNotes:true,Beepster:true,Reminderz:true,Pome:false,PebClaw:false};
+ const descriptions={StoneNotes:'Dictate a thought. Find it in Obsidian.',Beepster:'Your Beeper conversations, on your wrist.',Reminderz:'Apple Reminders, a button press away.',Pome:'Control your home through Itsyhome.',PebClaw:'Talk to your OpenClaw assistant.'};
+ const icons={StoneNotes:'notebook-pen',Beepster:'messages-square',Reminderz:'list-checks',Pome:'house',PebClaw:'bot'};
+ const line=(title,detail,right)=>'<div class="oa-row"><div>'+title+'<span class="oa-small">'+detail+'</span></div>'+right+'</div>';
+ const action=(label,which,primary=false)=>'<button type="button" class="oa-action '+(primary?'oa-primary':'')+'" data-action="'+which+'">'+label+'</button>';
+ function render(){
+  root.dataset.navigation=design.navigation;
+  root.querySelectorAll('[data-page]').forEach(b=>{if(b.dataset.page===current)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+  if(current==='Overview'){
+   main.innerHTML='<h2>Your Pebble, connected.</h2><p>One home for your Organik Apps connections.</p><div class="oa-section">'+Object.keys(enabled).map(n=>line('<div class="oa-name"><span class="oa-icon"><i data-lucide="'+icons[n]+'" aria-hidden="true"></i></span>'+n+'</div>',descriptions[n],'<button type="button" class="oa-action" data-go="'+n+'">'+(enabled[n]?'Manage':'Set up')+'</button>')).join('')+'</div><div class="oa-foot">Sample setup: private connection available · Start at login enabled</div>';
+  }else{
+   const n=current;
+   let body=line('Enable '+n,enabled[n]?'Available to its paired Pebble app.':'Set up only the apps you want to use.','<input type="checkbox" class="oa-switch" id="oa-enable" aria-label="Enable '+n+'" '+(enabled[n]?'checked':'')+'>');
+   if(n==='StoneNotes'){
+    body+=line('Obsidian vault','My Notes / Pebble',action('Choose vault…','vault'));
+    body+=line('Notes folder','Pebble · Reads notes created here or in Obsidian.','<span class="oa-state">Folder selected</span>');
+    body+=line('Mac connection','Files are saved directly as Markdown.','<span class="oa-state">'+(enabled[n]?'Ready':'Off')+'</span>');
+    body+=line('Phone connection','Last successful contact: 2 minutes ago','<span class="oa-state">Paired</span>');
+   }else if(n==='Pome'||n==='PebClaw'){
+    body+=line(n==='Pome'?'Itsyhome':'OpenClaw',n==='Pome'?'Connect to Itsyhome installed on this Mac.':'Connect to your existing OpenClaw host.',action('Set up…','setup'));
+   }else{
+    body+=line(n==='Beepster'?'Beeper Desktop':'Apple Reminders',n==='Beepster'?'API access configured on this Mac.':'Reminders permission granted.','<span class="oa-state">'+(enabled[n]?'Ready':'Off')+'</span>');
+    body+=line('Private connection','Available to your phone through Tailscale.','<span class="oa-state">Configured</span>');
+   }
+   main.innerHTML='<h2>'+n+'</h2><p>'+descriptions[n]+'</p><div class="oa-section">'+body+'</div><div class="oa-actions">'+action('Connect phone','pair',true)+action('Check connection','check')+'</div><div class="oa-foot" id="oa-detail">'+(n==='StoneNotes'?'Watch: New note → dictate → confirm → Saved to vault.':'Setup and permissions apply only to this connector.')+'</div>';
+   main.querySelector('#oa-enable').onchange=e=>{enabled[n]=e.target.checked;render();};
+  }
+  if(globalThis.lucide)lucide.createIcons({attrs:{width:16,height:16}});
+ }
+ root.addEventListener('click',e=>{
+  const page=e.target.closest('[data-page],[data-go]');
+  if(page){current=page.dataset.page||page.dataset.go;render();return;}
+  const button=e.target.closest('[data-action]');
+  if(button){const detail=main.querySelector('#oa-detail');const messages={pair:'Preview: this opens a one-time phone pairing code for '+current+'.',check:'Preview: check the Mac service, private route, and last phone contact separately.',vault:'Preview: the Mac folder picker chooses your vault, then creates or reuses its Pebble folder.',setup:'Preview: setup walks through the required app connection and permissions.'};detail.textContent=messages[button.dataset.action];}
+ });
+ render();
+ if(globalThis.Tweak){const tweaks=new Tweak({container:root,onChange:render});tweaks.addSelect(design,'navigation',{label:'Navigation',options:[{label:'Sidebar',value:'sidebar'},{label:'Tabs',value:'tabs'}]});}
+})();
+</script>
