@@ -62,6 +62,9 @@ static GColor s_selection_text;
 static bool s_custom_colors;
 static GColor s_background, s_foreground, s_highlight;
 static AppTimer *s_timeout;
+static AppTimer *s_saved_refresh_timer;
+static bool s_saved_list_dirty,s_saved_reader_dirty;
+static void refresh_saved_view(void *unused);
 
 static AppTimer *s_marquee_timer;
 static int s_marquee_offset,s_marquee_max,s_marquee_fraction;
@@ -126,6 +129,7 @@ static void timed_out(void *unused) {
   set_status(s_pending ? "Draft kept · select to retry" : "No reply · double Back for actions");
 }
 static void send_command(int command, const char *id, int page, const char *text) {
+  if(command==2)s_saved_reader_dirty=false;
   DictionaryIterator *iter;
   if (app_message_outbox_begin(&iter) != APP_MSG_OK) { stop_stitch();s_loading=false;set_status("Phone busy · please retry"); return; }
   dict_write_int(iter, MESSAGE_KEY_COMMAND, &command, sizeof(command), true);
@@ -153,6 +157,7 @@ static void send_command(int command, const char *id, int page, const char *text
 }
 static void load_notes(int offset) {
   if (!s_ready||!s_browser) { set_status("Update the Mac connector, then reopen Notesy"); return; }
+  if(!s_snapshot[0])s_saved_list_dirty=false;
   s_loading = true;s_incoming_count=-1;
   set_status(s_search?"Searching vault…":"Loading folder…"); send_command(s_search?7:1, NULL, offset, s_search?s_query:NULL);
 }
@@ -553,6 +558,15 @@ static void open_selected(void){
   window_stack_push(s_reader,true);s_loading=true;send_command(2,s_current_id,0,NULL);
 }
 static void refresh_list(void){s_snapshot[0]=0;s_restore_row=0;load_notes(0);}
+static void refresh_saved_view(void *unused){
+  s_saved_refresh_timer=NULL;
+  if(!s_saved_list_dirty&&!s_saved_reader_dirty)return;
+  // A save may arrive while a snapshot/page/image is still in flight. Wait for
+  // that request rather than dropping the refresh or replacing its response.
+  if(s_loading||s_stitch){s_saved_refresh_timer=app_timer_register(200,refresh_saved_view,NULL);return;}
+  if(s_body){if(s_saved_reader_dirty){s_loading=true;send_command(2,s_current_id,s_page,NULL);}}
+  else if(s_saved_list_dirty)refresh_list();
+}
 static void perform(int action){
   if(s_stitch){set_status("Stitch in progress · Back to finish");return;}
   if(action==11){start_search();return;}
@@ -663,6 +677,14 @@ static void inbox(DictionaryIterator *iter, void *context) {
     if(id&&strcmp(id->value->cstring,s_current_id)==0&&s_body){if(s_action_menu)window_stack_pop(false);window_stack_pop(true);}
     s_delete_id[0]=0;s_before_search.snapshot[0]=0;for(int i=0;i<s_depth;i++)s_history[i].snapshot[0]=0;refresh_list();
   } else if(kind==7||kind==8) {
+    if(kind==8){
+      s_saved_list_dirty=true;s_snapshot[0]=0;s_before_search.snapshot[0]=0;
+      for(int i=0;i<s_depth;i++)s_history[i].snapshot[0]=0;
+      Tuple *saved_target=dict_find(iter,MESSAGE_KEY_TARGET_ID);
+      if(s_body&&((saved_target&&strcmp(saved_target->value->cstring,s_current_id)==0)||
+         (id&&strcmp(id->value->cstring,s_last_append_id)==0&&strcmp(s_current_id,s_last_append_target)==0)))s_saved_reader_dirty=true;
+      if(!s_saved_refresh_timer)s_saved_refresh_timer=app_timer_register(200,refresh_saved_view,NULL);
+    }
     if(kind==8&&s_pending&&id&&strcmp(id->value->cstring,s_draft_id)!=0){set_status("Earlier note saved · draft kept");return;}
     bool matching=s_pending&&id&&strcmp(id->value->cstring,s_draft_id)==0;
     if(s_stitch){
@@ -683,9 +705,9 @@ static void inbox(DictionaryIterator *iter, void *context) {
     if(kind==8){s_snapshot[0]=0;s_before_search.snapshot[0]=0;for(int i=0;i<s_depth;i++)s_history[i].snapshot[0]=0;}
     if(kind==8&&id&&strcmp(id->value->cstring,s_last_append_id)==0){
       s_last_append_id[0]=0;
-      if(s_body&&!s_loading&&strcmp(s_current_id,s_last_append_target)==0){s_loading=true;send_command(2,s_current_id,s_page,NULL);}
+      // The deferred refresh above also handles a save received during a load.
     }
-    if((kind==8||(kind==7&&!s_count))&&!s_body&&!s_loading)refresh_list();
+    if(kind==7&&!s_count&&!s_body&&!s_loading)refresh_list();
   } else if(kind==5||kind==9) {
     stop_stitch();
     if(kind==9){clear_timeout();s_loading=false;s_snapshot[0]=0;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}if(text)snprintf(s_image_error,sizeof(s_image_error),"%s",text->value->cstring);if(s_rich_menu)layer_mark_dirty(menu_layer_get_layer(s_rich_menu));}}
@@ -714,7 +736,7 @@ int main(void) {
   s_main=window_create();window_set_window_handlers(s_main,(WindowHandlers){.load=main_load,.unload=main_unload,.appear=marquee_appear,.disappear=marquee_disappear});window_stack_push(s_main,true);
   app_message_register_inbox_received(inbox);app_message_register_outbox_failed(outbox_failed);app_message_open(2048,1536);
   s_dictation=dictation_session_create(DRAFT_SIZE,dictation_done,NULL);if(s_dictation)dictation_session_enable_confirmation(s_dictation,true);
-  app_event_loop();stop_stitch();marquee_stop();clear_timeout();if(s_dictation)dictation_session_destroy(s_dictation);if(s_actions)window_destroy(s_actions);if(s_reader)window_destroy(s_reader);window_destroy(s_main);
+  app_event_loop();if(s_saved_refresh_timer)app_timer_cancel(s_saved_refresh_timer);stop_stitch();marquee_stop();clear_timeout();if(s_dictation)dictation_session_destroy(s_dictation);if(s_actions)window_destroy(s_actions);if(s_reader)window_destroy(s_reader);window_destroy(s_main);
 #if defined(PBL_PLATFORM_EMERY)
   unload_custom_theme_font();
 #endif

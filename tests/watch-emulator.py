@@ -17,6 +17,7 @@ info=json.loads(fixture.stdout.readline());base='http://127.0.0.1:'+str(info['po
 pebble=PebbleConnection(ManagedEmulatorTransport('emery'));pebble.connect();pebble.run_async()
 service=AppMessageService(pebble);app=uuid.UUID('b9270b92-5e0e-491b-9993-165f849d7250')
 saved_captures=[];hold_receipts=[False]
+hold_reply=[0];reply_ready=threading.Event();release_reply=threading.Event();read_results=[]
 incoming=queue.Queue();calls=[];failures=[];acks=set();lock=threading.Lock();done=threading.Event()
 service.register_handler('appmessage',lambda tx,u,data:incoming.put(data) if u==app else None)
 service.register_handler('ack',lambda tx,u:acks.add(tx))
@@ -39,11 +40,16 @@ def worker():
    calls.append(m);cmd=m[0];seq=m[2]
    if cmd in (1,7):
     v=http(('/v2/search?' if cmd==7 else '/v2/browse?')+urllib.parse.urlencode({'q':m.get(5,''),'folder':m.get(18,''),'offset':m.get(6,0),'snapshot':m.get(22,'')}))
+    if hold_reply[0]==cmd:
+     hold_reply[0]=0;reply_ready.set();assert release_reply.wait(8);release_reply.clear()
     send({1:1,2:seq,7:len(v['items']),6:v['offset'],23:v['total'],18:v['id'],19:v['parent'],4:v['title'],22:v['snapshot']})
     for i,n in enumerate(v['items']):send({1:2,2:seq,8:i,3:n['id'],4:n['title'],5:n.get('location',''),20:int(n['folder']),21:int(n['pinned'])})
     send({1:3,2:seq})
    elif cmd==2:
     v=http(('/v3/notes/' if m.get(25)==3 else '/v2/notes/')+m[3]+'?page='+str(m.get(6,0)))
+    read_results.append(v)
+    if hold_reply[0]==cmd:
+     hold_reply[0]=0;reply_ready.set();assert release_reply.wait(8);release_reply.clear()
     if v.get('rich'):
      send({1:12,2:seq,4:v['title'],19:v['parent'],21:int(v['pinned']),28:v['revision'],6:v['offset'],23:v['total'],7:len(v['blocks'])})
      for i,b in enumerate(v['blocks']):send({1:13,2:seq,8:i,29:b['id'],5:b['text'],20:{'text':0,'task':1,'image':2}[b['kind']],30:int(b.get('checked',False))})
@@ -243,8 +249,30 @@ def stitch_checks():
  assert len(sessions)==before+1 and not saved_captures[-1][0].get(17)
  print('PASS: main Quick Dictate creates one note with one recording',flush=True)
 
+def refresh_checks():
+ # Keep the old list response in flight while a create finishes on the Mac.
+ hold_reply[0]=1
+ send({1:6,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,buttons))})
+ assert reply_ready.wait(4);reply_ready.clear()
+ made=http('/v2/notes',{'requestId':'refresh-race-create','text':'Refresh race new note','vaultId':info['vaultId'],'folderId':info['root']})
+ send({1:8,3:'refresh-race-create',17:made['id']});release_reply.set();settle();time.sleep(.6);settle()
+ lists=[m for m in calls if m[0]==1];assert len(lists)==2 and not lists[-1].get(22),'Save during list load must request a fresh snapshot'
+ print('PASS: save during list loading triggers a fresh snapshot immediately after the old response',flush=True)
+ # Now hold an old reader response while an append finishes.
+ hold_reply[0]=2
+ click('down')
+ value=QemuButton.Button.Select
+ send_data_to_qemu(pebble.transport,QemuButton(state=value));time.sleep(.2);send_data_to_qemu(pebble.transport,QemuButton(state=0))
+ assert reply_ready.wait(4);reply_ready.clear()
+ target=[m for m in calls if m[0]==2][-1][3]
+ http('/v2/items/'+target+'/append',{'requestId':'refresh-race-append','text':'Refresh marker at end','vaultId':info['vaultId']})
+ send({1:8,3:'refresh-race-append',17:target});release_reply.set();settle();time.sleep(.6);settle()
+ reads=[m for m in calls if m[0]==2];assert len(reads)==2 and reads[-1][3]==target,'Save during reader load must refresh the open note'
+ print('PASS: append confirmation during reader loading is retained and refreshes the open note',flush=True)
+
 try:
- if os.environ.get('WATCH_TEST_STITCH_ONLY') or os.environ.get('WATCH_TEST_STITCH_STOP_ONLY'):stitch_checks()
+ if os.environ.get('WATCH_TEST_REFRESH_ONLY'):refresh_checks()
+ elif os.environ.get('WATCH_TEST_STITCH_ONLY') or os.environ.get('WATCH_TEST_STITCH_STOP_ONLY'):stitch_checks()
  elif os.environ.get('WATCH_TEST_SCROLL_ONLY'):scroll_checks()
  elif os.environ.get('WATCH_TEST_RICH_ONLY'):rich_checks()
  elif os.environ.get('WATCH_TEST_MARQUEE_ONLY'):marquee_checks()

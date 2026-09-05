@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 — unreleased
+
+- Refresh after a confirmed save even if the watch was already loading a list, note page or image.
+- Refresh the open note for delayed append confirmations, including earlier queued captures.
+
 ## 1.0.0 — release candidate
 
 Initial public release preparation. Not yet published.
