@@ -22,3 +22,15 @@ test('capture is acknowledged after phone persistence and saved only after the M
  assert.equal(JSON.parse(p.data['stonenotes.delivery']).pending.length,1);assert.ok(p.messages.some(m=>m.TYPE===7));assert.ok(!p.messages.some(m=>m.TYPE===8));
  const req=p.requests[0];req.status=200;req.responseText='{"saved":true}';req.onload();assert.ok(p.messages.some(m=>m.TYPE===8));assert.equal(JSON.parse(p.data['stonenotes.delivery']).pending.length,0);
 });
+test('settings shows connection progress, success and errors with browser window.status semantics',()=>{
+ const p=phone();p.handlers.showConfiguration();const html=decodeURIComponent(p.urls[0].split(',').slice(1).join(','));
+ const elements={};for(const id of ['pair','status','theme','auto','test','save','pending'])elements[id]={value:'',textContent:''};
+ let request;const context={document:{getElementById:id=>elements[id]},location:{href:''},XMLHttpRequest:function(){request=this;this.open=()=>{};this.setRequestHeader=()=>{};this.send=()=>{};}};
+ let browserStatus='';Object.defineProperty(context,'status',{get:()=>browserStatus,set:v=>{browserStatus=String(v);},configurable:true});
+ vm.runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
+ elements.pair.value=JSON.stringify(config);elements.test.onclick();assert.equal(elements.status.textContent,'Connecting…');
+ request.status=200;request.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId});request.onload();assert.equal(elements.status.textContent,'Connected to your Pebble notes folder.');
+ elements.save.onclick();assert.match(context.location.href,/^pebblejs:\/\/close#/);
+ elements.test.onclick();request.onerror();assert.match(elements.status.textContent,/Cannot reach/);
+ elements.pair.value='invalid';elements.test.onclick();assert.ok(elements.status.textContent.length>0);assert.notEqual(elements.status.textContent,'Connecting…');
+});
