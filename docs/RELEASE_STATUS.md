@@ -1,6 +1,7 @@
 # Coordinated release status
 
-Prepared locally for Notesy 1.0.0 and Organik Apps Pebble Connector 0.2.0. Publication is pending.
+Notesy 1.0.0 is the initial public beta. GitHub source/download publication is authorized;
+store and companion Connector publication are coordinated separately.
 
 | Item | Status |
 | --- | --- |
@@ -13,9 +14,9 @@ Prepared locally for Notesy 1.0.0 and Organik Apps Pebble Connector 0.2.0. Publi
 | Existing functionality | Prior physical watch install and connector rendering confirmed; emulator regression covers scrolling, tasks, previews and paging |
 | New release candidate | 1.0.0 compiled emulator passes tasks, image/drawing previews and paging; public icons/screenshots, PBW and source/archive checks pass |
 | Cross-app migration docs | Prepared in Beepster, Reminderz and Pome; PebClaw/Tesla status clarified |
-| Connector 0.2.0 | Connector task owns signed installer/feed and live installation. Its earlier bundle predates Stitch; the updated Notesy PBW must be included in the next Connector package |
+| Connector 0.3.0 | Connector task owns signed installer/feed and live installation. Its earlier bundle predates Stitch; the updated Notesy PBW must be included in the next Connector package |
 | Public GitHub repos / releases / Pages / Notesy listing | Not published; planned URLs must be verified after publication |
-| Fresh user setup | Final clean-account/fresh-phone validation remains required before launch |
+| Fresh user setup | Final clean-account/fresh-phone validation remains required for stable promotion |
 
 No source host, store or social announcement has been published by this preparation task.
 Existing installations and pairing are preserved. Other app binaries need no protocol change

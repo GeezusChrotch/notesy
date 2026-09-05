@@ -26,7 +26,7 @@ your Notesy credential does not grant access to the other connectors.
 
 ## Install and pair the watch
 
-1. Open `Notesy-1.0.0.pbw` from the [Notesy release](https://github.com/GeezusChrotch/notesy/releases/latest)
+1. Open `Notesy-1.0.0.pbw` from the [Notesy release](https://github.com/GeezusChrotch/notesy/releases/tag/v1.0.0)
    on your phone and open it with Pebble. Once the store listing is live, you can also install
    Notesy from the Pebble app's store.
 2. In the phone's Pebble app, open **Notesy → Settings**.

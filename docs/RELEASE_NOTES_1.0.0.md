@@ -1,4 +1,4 @@
-# Notesy 1.0.0
+# Notesy 1.0.0 — initial public beta
 
 Your Obsidian vault, on your wrist. Notesy is a free MIT open-source app from Organik Apps for
 Pebble Time and Pebble Time 2.
@@ -10,11 +10,18 @@ Press Back to finish and keep the accepted sections. You can also dictate a fuzz
 folders and root notes, pin favorites, hide folders, check Markdown tasks, and view local pictures
 and Excalidraw previews. Customize Pome themes, fonts, colors, button shortcuts and marquee speed.
 
+## Validation
+
+49 automated tests pass and Basalt/Emery builds succeed. Compiled Emery tests cover Quick Dictate,
+Stitch create/append, cancellation, delayed receipts, scrolling, tasks and local previews.
+Physical-watch Stitch and a fresh Mac/phone setup have not yet been validated. This first public
+release is marked as a beta so testers can assess those paths without implying they are confirmed.
+
 ## Install
 
 Download `Notesy-1.0.0.pbw` on your phone and open it with Pebble. Install the companion
-**Organik Apps Pebble Connector 0.2.0 or newer** on your Mac, select Notesy, and follow its
-connection steps. See the [installation guide](INSTALL.md).
+**Organik Apps Pebble Connector 0.3.0 or newer** on your Mac, select Notesy, and follow its
+connection steps. See the [installation guide](https://github.com/GeezusChrotch/notesy/blob/v1.0.0/docs/INSTALL.md).
 
 The Mac must run macOS 14 or later and remain awake. Tailscale must connect the Mac and paired
 phone. iPhone is the tested setup; dictation uses the phone's configured transcription provider.
@@ -36,4 +43,4 @@ subscription. Independent of Obsidian, Pebble and Tailscale.
 
 Thank you to ChatGPT and Codex, especially ChatGPT 5.6 Sol and ChatGPT 6 Astra, and to the people at OpenAI who build these tools, for allowing a nerd with an idea to make cool stuff.
 
-[Thank you to the developers and projects we build on](../ACKNOWLEDGMENTS.md).
+[Thank you to the developers and projects we build on](https://github.com/GeezusChrotch/notesy/blob/v1.0.0/ACKNOWLEDGMENTS.md).

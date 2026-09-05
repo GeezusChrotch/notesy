@@ -10,7 +10,7 @@ Notesy 1.0.0 is prepared for its first public release alongside
 [Organik Apps Pebble Connector](https://github.com/GeezusChrotch/organik-pebble-connector).
 Publication and store submission are pending; see [release status](docs/RELEASE_STATUS.md).
 
-Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.0.0.
+Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.0.0 · initial public beta.
 Choose the vault in **Organik Apps Pebble Connector**. No Obsidian plugin or dedicated notes folder
 is required. Ordinary Markdown notes created in Obsidian appear alongside watch-created notes.
 No personal vault, account, network address or credential is embedded in the shared app.
@@ -181,6 +181,12 @@ transcripts through the SDK voice protocol; it does not verify a real microphone
 service. Normal watch installations must use `dist/Notesy-1.0.0.pbw`.
 
 Notesy was previously named StoneNotes. Its watch UUID, saved settings, queues, pins and pairing remain compatible. Internal storage keys and the wire service ID keep their original names; existing notes are not renamed or rewritten.
+
+## Beta testing status
+
+The release passes 49 automated tests and Basalt/Emery builds. Compiled emulator checks cover
+Stitch, ordinary capture, scrolling, tasks and previews. Final physical-watch Stitch and fresh
+Mac/phone setup checks remain pending; see [release status](docs/RELEASE_STATUS.md).
 
 ## Thank you
 

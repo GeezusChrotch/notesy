@@ -27,6 +27,6 @@ source=dist/f'Notesy-{version}-source.zip';archive(source,files,f'notesy-{versio
 art=dist/f'Notesy-{version}-store-assets.zip';archive(art,[p for p in files if 'appstore-assets' in p.parts]+[root/'APPSTORE_LISTING.md'],'')
 artifacts=[pbw,source,art]
 (dist/'SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in artifacts))
-manifest={'app':'Notesy','version':version,'status':'release-candidate-not-published','uuid':json.loads((root/'package.json').read_text())['pebble']['uuid'],'license':'MIT','artifacts':[{'name':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in artifacts]}
+manifest={'app':'Notesy','version':version,'status':'initial-public-beta','uuid':json.loads((root/'package.json').read_text())['pebble']['uuid'],'license':'MIT','artifacts':[{'name':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in artifacts]}
 (dist/'release-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-print('Public PBW, source, store assets and SHA-256 manifest ready. Publication remains pending.')
+print('Public PBW, source, store assets and SHA-256 manifest ready. See docs/RELEASE_STATUS.md for verified publication state.')
