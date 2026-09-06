@@ -1,13 +1,13 @@
 # Changelog
 
-## 1.0.1 — unreleased
+## 1.0.1 — public beta
 
 - Refresh after a confirmed save even if the watch was already loading a list, note page or image.
 - Refresh the open note for delayed append confirmations, including earlier queued captures.
 
-## 1.0.0 — release candidate
+## 1.0.0 — initial public beta
 
-Initial public release preparation. Not yet published.
+Published on 2026-09-05.
 
 - Browse the entire Obsidian vault, including root notes, with automatic list paging.
 - Dictate new notes, append to open notes, and dictate fuzzy searches.

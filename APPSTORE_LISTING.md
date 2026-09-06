@@ -1,10 +1,10 @@
 # Notesy — Pebble Appstore submission
 
-Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — initial public beta 1.0.0.
+Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — public beta 1.0.1.
 
 - Name: Notesy
 - Developer: Organik Apps
-- Version: 1.0.0
+- Version: 1.0.1
 - Category: Utilities
 - Platforms: Pebble Time (basalt), Pebble Time 2 (emery)
 - Price: Free
@@ -18,7 +18,7 @@ Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — initial public
 
 ## Description
 
-Your Obsidian vault, on your wrist. Initial public beta.
+Your Obsidian vault, on your wrist. Public beta.
 
 Notesy brings quick capture and useful everyday notes to Pebble Time and Time 2. Pebble limits recordings to 15 seconds: Quick Dictate captures one thought; Stitch joins sections into longer notes. Both create or append. Speak a search term to find likely notes.
 
