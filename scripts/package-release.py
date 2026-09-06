@@ -12,5 +12,8 @@ with zipfile.ZipFile(root/'build/StoneNotes.pbw') as source, zipfile.ZipFile(tar
         if re.search(rb'/Users/[A-Za-z]',data):raise SystemExit('Developer path found in '+info.filename)
         output.writestr(info,data)
 with zipfile.ZipFile(target) as package:
+    expected=json.loads((root/'package.json').read_text())['version']
+    actual=json.loads(package.read('appinfo.json'))['versionLabel']
+    if actual!=expected:raise SystemExit('Stale SDK package version: expected '+expected+', got '+actual+'. Clean the build and retry.')
     if package.testzip():raise SystemExit('Release archive failed validation.')
 print('Created public Notesy package without SDK debug source maps.')

@@ -20,6 +20,7 @@ def release_path(cls,project):
     if hashlib.sha256(artifact.read_bytes()).hexdigest()!=expected:raise RuntimeError('Release artifact checksum changed.')
     with zipfile.ZipFile(artifact) as z:
         if z.testzip() or any(n.endswith('.map') for n in z.namelist()):raise RuntimeError('Invalid public package.')
+        if json.loads(z.read('appinfo.json'))['versionLabel']!=version:raise RuntimeError('Embedded release version does not match package.json.')
     return str(artifact)
 PublishCommand._pbw_path_for_project=classmethod(release_path)
 sys.argv[1:1]=['publish']

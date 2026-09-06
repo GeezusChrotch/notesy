@@ -1,6 +1,11 @@
 # Changelog
 
-## 1.0.1 — public beta
+## 1.1.0 — public beta
+
+- Clean build with a matching embedded version; release packaging now rejects stale SDK metadata.
+- Supersedes 1.0.1, which contained the refresh fix but retained the old package version label.
+
+## 1.0.1 — superseded
 
 - Refresh after a confirmed save even if the watch was already loading a list, note page or image.
 - Refresh the open note for delayed append confirmations, including earlier queued captures.

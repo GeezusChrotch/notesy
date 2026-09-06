@@ -1,10 +1,10 @@
 # Notesy — Pebble Appstore submission
 
-Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — public beta 1.0.1.
+Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — public beta 1.1.0.
 
 - Name: Notesy
 - Developer: Organik Apps
-- Version: 1.0.1
+- Version: 1.1.0
 - Category: Utilities
 - Platforms: Pebble Time (basalt), Pebble Time 2 (emery)
 - Price: Free

@@ -2,7 +2,7 @@
 
 ## Current state
 
-Notesy 1.0.1 is the public beta. See docs/RELEASE_STATUS.md for verified publication
+Notesy 1.1.0 is the public beta. See docs/RELEASE_STATUS.md for verified publication
 and validation state. This checklist does not itself establish that any release step is complete.
 Canonical repositories: `GeezusChrotch/notesy` and `GeezusChrotch/organik-pebble-connector`.
 
@@ -12,7 +12,7 @@ and final installer. Do not rebuild or replace its working files from this repos
 ## Build and review
 
 1. Follow renderer setup in README, then run `npm run package` and `npm run release:kit`.
-2. Verify `dist/Notesy-1.0.1.pbw`, source archive, store assets and `SHA256SUMS`.
+2. Verify `dist/Notesy-1.1.0.pbw`, source archive, store assets and `SHA256SUMS`.
 3. For stable promotion, install the release PBW into the emulator and physical watch. Verify pairing, a new note,
    append, check/uncheck, immediate delete/recovery, hidden folders, pins, dictated search,
    long-text/photo scrolling and drawing previews using disposable content.
@@ -28,8 +28,8 @@ and final installer. Do not rebuild or replace its working files from this repos
 2. Enable GitHub private vulnerability reporting and Pages for Notesy from the repository root.
 3. Publish the connector's signed/notarized DMG and signed Sparkle appcast using its own release
    instructions. Verify the feed and installer links from outside the developer Mac.
-4. Publish Notesy's `v1.0.1` release with PBW, source archive, store asset archive, checksums and
-   the text from `docs/RELEASE_NOTES_1.0.1.md`.
+4. Publish Notesy's `v1.1.0` release with PBW, source archive, store asset archive, checksums and
+   the text from `docs/RELEASE_NOTES_1.1.0.md`.
 5. Publish the prepared Beepster, Reminderz and Pome migration/documentation updates only after
    the unified connector download resolves. Historical release notes remain historical.
 6. Submit Notesy to the Pebble store with `APPSTORE_LISTING.md` and the prepared artwork.
