@@ -26,7 +26,7 @@ your Notesy credential does not grant access to the other connectors.
 
 ## Install and pair the watch
 
-1. Open `Notesy-1.1.0.pbw` from the [Notesy release](https://github.com/GeezusChrotch/notesy/releases/tag/v1.1.0)
+1. Open `Notesy-1.2.0.pbw` from the [Notesy release](https://github.com/GeezusChrotch/notesy/releases/tag/v1.2.0)
    on your phone and open it with Pebble. Once the store listing is live, you can also install
    Notesy from the Pebble app's store.
 2. In the phone's Pebble app, open **Notesy → Settings**.
@@ -50,3 +50,5 @@ Pebble or clear its data while notes are queued. Existing Markdown files are not
 
 You can hide folders in phone settings without moving files. No dedicated Pebble or Notesy folder
 is required. Notes you create directly in Obsidian appear on the watch after refreshing the list.
+
+Notesy 1.2.0 requires Organik Apps Pebble Connector 0.5.0 or later. Update the Mac Connector before updating the watch app. Existing pairing and vault settings are retained.

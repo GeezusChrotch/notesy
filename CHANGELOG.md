@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 — candidate
+## 1.2.0 — public beta
 
 - Touch and button paging in both directions, retaining the boundary entry.
 - Watch/settings sorting by name, modified date, created date or scoped tag.

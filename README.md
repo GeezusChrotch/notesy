@@ -6,13 +6,13 @@
 
 [Install](docs/INSTALL.md) · [User guide](docs/USER_GUIDE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Privacy](PRIVACY.md) · [Release preparation](RELEASING.md)
 
-Notesy 1.1.0 is prepared for its first public release alongside
+Notesy 1.2.0 is released alongside
 [Organik Apps Pebble Connector](https://github.com/GeezusChrotch/organik-pebble-connector).
 [Install from the Pebble store](https://apps.repebble.com/a9d4515681c34b5088993dc6) or
-[download the 1.1.0 public beta](https://github.com/GeezusChrotch/notesy/releases/tag/v1.1.0).
+[download the 1.2.0 public beta](https://github.com/GeezusChrotch/notesy/releases/tag/v1.2.0).
 See [release status](docs/RELEASE_STATUS.md) for validation details.
 
-Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.1.0 · public beta.
+Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.2.0 · public beta.
 Choose the vault in **Organik Apps Pebble Connector**. No Obsidian plugin or dedicated notes folder
 is required. Ordinary Markdown notes created in Obsidian appear alongside watch-created notes.
 No personal vault, account, network address or credential is embedded in the shared app.
@@ -36,7 +36,7 @@ for each view**: normal navigation, Quick Dictate or Stitch for a new note or ap
 Double-pressing Back always opens Actions.
 There are no Back or Next/Previous page menu entries.
 
-The main page shows pins first, then folders, then root notes. In the 1.2.0 candidate, Actions → Sort notes and phone Vault settings offer name, modified date, created date or scoped tag browsing. Return to top is available in Actions and as a configurable shortcut. See [browsing and sorting](docs/USER_GUIDE.md#browsing-sorting-and-returning-to-the-top-120); install the matching Connector service before this watch build.
+The main page shows pins first, then folders, then root notes. In 1.2.0, Actions → Sort notes and phone Vault settings offer name, modified date, created date or scoped tag browsing. Return to top is available in Actions and as a configurable shortcut. See [browsing and sorting](docs/USER_GUIDE.md#browsing-sorting-and-returning-to-the-top-120); install the matching Connector service before this watch build.
 Nested folders open with Select. Lists keep 15 entries on the watch; moving beyond either edge
 loads the adjacent batch automatically. Folder listings are stable while paging, even if files
 change in Obsidian. Use Refresh in Actions to see changes; listings expire after 30 minutes.
@@ -102,7 +102,7 @@ on your Mac. Source drawings are never rewritten; use New note alongside a drawi
 
 Choose your vault in the Mac connector, start Notesy, start its private connection, and select
 Connect phone. Scan the one-time QR code. On the phone, copy the pairing details into
-Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-1.1.0.pbw` on the watch.
+Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-1.2.0.pbw` on the watch.
 The connector requires macOS 14+ and bundles its runtime. Keep Tailscale connected on both devices.
 
 For an existing Notesy installation, update both the connector and watch app, then reopen
@@ -161,7 +161,7 @@ API remains compatible with old queued notes. The Mac build bundles the server m
 Renderer versions and dependency overrides are pinned in renderer/package-lock.json. The renderer
 blocks HTTP(S) requests and only receives the selected local image or drawing.
 
-Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-1.1.0.pbw` for distribution; the latter
+Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-1.2.0.pbw` for distribution; the latter
 omits SDK source maps. `tests/watch-emulator.py` exercises the compiled C app against the disposable
 vault in `tests/emulator-fixture.js`; it requires a fixture PBW with inert phone JS, never a physical
 watch. Phone transport and settings have separate automated tests. See `PRIVACY.md` for data handling.
@@ -181,14 +181,14 @@ WATCH_TEST_RICH_ONLY=1 python tests/watch-emulator.py
 
 Use only the emulator fixture for those commands. The dictation check supplies simulated
 transcripts through the SDK voice protocol; it does not verify a real microphone or phone speech
-service. Normal watch installations must use `dist/Notesy-1.1.0.pbw`.
+service. Normal watch installations must use `dist/Notesy-1.2.0.pbw`.
 
 Notesy was previously named StoneNotes. Its watch UUID, saved settings, queues, pins and pairing remain compatible. Internal storage keys and the wire service ID keep their original names; existing notes are not renamed or rewritten.
 
 ## Beta testing status
 
-The release passes 49 automated tests and Basalt/Emery builds. Compiled emulator checks cover
-Stitch, ordinary capture, scrolling, tasks and previews. Final physical-watch Stitch and fresh
+The release passes 58 automated tests and Basalt/Emery builds. Compiled emulator checks cover
+Stitch, ordinary capture, scrolling, tasks and previews. The installed 1.2.0 update received positive user feedback. Fresh
 Mac/phone setup checks remain pending; see [release status](docs/RELEASE_STATUS.md).
 
 ## Thank you

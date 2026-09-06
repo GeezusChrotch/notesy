@@ -12,3 +12,7 @@ Notesy source/gateway only. Do not replace the running Connector service indepen
 - Real browser: Vault sorting has all four modes; Tag reveals a root-tag selector; Shortcuts exposes Return to top and Sort notes while Up/Down stay fixed.
 
 No live vault edits, service restart, watch install or public publication performed for this candidate. Physical touch-edge paging, watch sort picker, tag filter and Return to top remain acceptance checks after the matching Connector is installed.
+
+## Release follow-up
+
+The matching Connector was integrated and installed by its owner. Josh reported positive feedback after installation and authorized publication. The released PBW retains the tested candidate hash. Fresh setup and exhaustive hardware coverage remain separate checks.

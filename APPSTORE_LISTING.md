@@ -1,10 +1,10 @@
 # Notesy — Pebble Appstore submission
 
-Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — public beta 1.1.0.
+Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — public beta 1.2.0.
 
 - Name: Notesy
 - Developer: Organik Apps
-- Version: 1.1.0
+- Version: 1.2.0
 - Category: Utilities
 - Platforms: Pebble Time (basalt), Pebble Time 2 (emery)
 - Price: Free
@@ -18,20 +18,20 @@ Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — public beta 1.
 
 ## Description
 
-Your Obsidian vault, on your wrist. Public beta.
+Your Obsidian vault, on your wrist. Free, MIT open source, public beta.
 
-Notesy brings quick capture and useful everyday notes to Pebble Time and Time 2. Pebble limits recordings to 15 seconds: Quick Dictate captures one thought; Stitch joins sections into longer notes. Both create or append. Speak a search term to find likely notes.
+Dictate new notes or append to existing ones. Quick Dictate captures one 15-second recording; Stitch joins sections into a longer note. Speak a search term to find likely notes.
 
-Browse folders and root notes, pin favorites, hide folders you don't need, and check or uncheck Markdown tasks. Local pictures and Excalidraw drawings appear as watch-sized previews. Lists load more as you scroll.
+Browse folders and root notes, with more entries loading as you scroll in either direction. Sort by name, modified date, created date or tag. The tag picker lists tags from notes directly in the current folder. Return to top jumps back to the first entry.
 
-Make it yours with Pome themes, fonts, colors, adjustable scrolling titles, and customizable short and long presses for all three side buttons.
+Pin favorites, hide folders, check Markdown tasks, and view local pictures and Excalidraw previews. Tap a different item to highlight it and read its scrolling title; tap the highlighted item to activate.
 
-Requires a Mac running macOS 14 or later, Organik Apps Pebble Connector, and Tailscale on the Mac and paired phone. The Mac must remain awake. iPhone is the tested phone setup. Dictation uses the phone's configured transcription service. Obsidian needs no plugin or subscription for Notesy.
+Choose Pome themes, fonts, colors and marquee speed. Customize Select and long presses, including Return to top and Sort notes. Up and Down always navigate.
 
-Notesy is free and MIT open source. No Notesy account, subscription or analytics. Images stay local to your Mac and private connection; remote web images and plugin-generated views aren't supported.
+Requires macOS 14+, Organik Apps Pebble Connector 0.5.0+, and Tailscale on the Mac and paired phone. Keep the Mac awake. iPhone is the tested phone setup. No Obsidian plugin or subscription needed.
 
-Automated and emulator checks pass; physical-watch Stitch and fresh setup checks remain pending.
+No Notesy account, subscription or analytics. Images use your private connection; remote web images and plugin-generated views aren't supported. Automated checks pass and the installed update received positive user feedback. Fresh setup testing remains pending.
 
-Setup and downloads: https://github.com/GeezusChrotch/notesy
+Setup: https://github.com/GeezusChrotch/notesy
 
-Independent software from Organik Apps; not affiliated with Obsidian, Pebble or Tailscale.
+Independent Organik Apps software; not affiliated with Obsidian, Pebble or Tailscale.
