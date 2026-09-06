@@ -30,12 +30,13 @@ No personal vault, account, network address or credential is embedded in the sha
 | Back double press | Actions menu | Actions menu |
 | Back long press | Exit app (watch OS) | Exit app (watch OS) |
 
-Phone Settings → Button shortcuts lets users assign **all six press/long-press gestures separately
+Single presses on Up and Down always navigate lists or scroll notes, even with older saved shortcuts.
+Phone Settings → Button shortcuts lets users assign **Select press and all three long presses separately
 for each view**: normal navigation, Quick Dictate or Stitch for a new note or append, delete, pin/unpin, actions, no action, refresh or dictate to search.
-Double-pressing Back always opens Actions, including movement controls if normal buttons were reassigned.
+Double-pressing Back always opens Actions.
 There are no Back or Next/Previous page menu entries.
 
-The main page shows pins first, then folders, then root notes, alphabetically within each group.
+The main page shows pins first, then folders, then root notes. In the 1.2.0 candidate, Actions → Sort notes and phone Vault settings offer name, modified date, created date or scoped tag browsing. Return to top is available in Actions and as a configurable shortcut. See [browsing and sorting](docs/USER_GUIDE.md#browsing-sorting-and-returning-to-the-top-120); install the matching Connector service before this watch build.
 Nested folders open with Select. Lists keep 15 entries on the watch; moving beyond either edge
 loads the adjacent batch automatically. Folder listings are stable while paging, even if files
 change in Obsidian. Use Refresh in Actions to see changes; listings expire after 30 minutes.
@@ -196,3 +197,7 @@ Thank you to ChatGPT and Codex, especially ChatGPT 5.6 Sol and ChatGPT 6 Astra, 
 
 We also thank the developers and communities behind the apps, libraries, fonts and tools we build
 on. [Full acknowledgments](ACKNOWLEDGMENTS.md).
+
+## Consistent phone settings
+
+The Pome-style tabbed settings and theme editor are described in [Phone settings](docs/SETTINGS.md).

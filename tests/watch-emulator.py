@@ -38,8 +38,8 @@ def worker():
   except queue.Empty:continue
   try:
    calls.append(m);cmd=m[0];seq=m[2]
-   if cmd in (1,7):
-    v=http(('/v2/search?' if cmd==7 else '/v2/browse?')+urllib.parse.urlencode({'q':m.get(5,''),'folder':m.get(18,''),'offset':m.get(6,0),'snapshot':m.get(22,'')}))
+   if cmd in (1,7,10):
+    v=http(('/v2/search?' if cmd==7 else '/v3/tags?' if cmd==10 else '/v3/browse?')+urllib.parse.urlencode({'q':m.get(5,''),'folder':m.get(18,''),'offset':m.get(6,0),'snapshot':m.get(22,''),'sort':['name','modified','created','tag'][m.get(34,0)],'tag':m.get(35,'')}))
     if hold_reply[0]==cmd:
      hold_reply[0]=0;reply_ready.set();assert release_reply.wait(8);release_reply.clear()
     send({1:1,2:seq,7:len(v['items']),6:v['offset'],23:v['total'],18:v['id'],19:v['parent'],4:v['title'],22:v['snapshot']})
@@ -159,7 +159,7 @@ def voice_checks():
   shot('search-results.png');click('select');assert calls[-1][0]==2 and calls[-1][3]==info['note'];shot('search-reader.png')
   custom=buttons.copy();custom[11]=8;settings(custom);search_words[:]=['note'];click('down',True);time.sleep(1.5);click('select');time.sleep(1.2);settle();assert calls[-1][0]==7
   for _ in range(33):click('down')
-  assert any(m[0]==7 and m.get(6)==30 for m in calls),'Search did not fetch third page'
+  assert any(m[0]==7 and m.get(6)==28 for m in calls),'Search did not fetch third page'
   for _ in range(36):click('up')
   assert [m for m in calls if m[0]==7][-1][6]==0
   click('back');assert calls[-1][0]==1 and calls[-1][18]==info['root']
@@ -289,27 +289,25 @@ try:
    click('down');click('down');click('select');assert calls[-1].get(18)==info['projects'];shot('vault-browser-folder.png')
    click('down');click('select');click('back');click('back')
    for _ in range(42):click('down')
-   assert any(m[0]==1 and m.get(6)==30 for m in calls),'List did not reach its third page'
+   assert any(m[0]==1 and m.get(6)==28 for m in calls),'List did not reach its third page'
    shot('vault-browser-third-page.png')
    for _ in range(45):click('up')
    assert [m for m in calls if m[0]==1][-1].get(6)==0,'List did not page backward'
    print('PASS: root pins, folders, root notes, nested Back, and forward/backward list and note paging',flush=True)
-  for index in range(6):
-   custom=buttons.copy();custom[index]=4;settings(custom);double_back()
-   for _ in range(10):click('down')
-   click('select')
+  for index in [1,3,4,5]:
+   custom=buttons.copy();custom[index]=4;settings(custom);click('down')
    previous=len([m for m in calls if m[0]==6]);click(['up','select','down'][index%3],index>=3)
    assert len([m for m in calls if m[0]==6])==previous+1,('Main binding failed',index)
-  print('PASS: all six main-view press/long-press bindings',flush=True)
+  print('PASS: all four customizable main-view bindings',flush=True)
   # Open a known root note; folder pins can change the root ordering.
   settings();listing=http('/v2/browse');row=next(i for i,n in enumerate(listing['items']) if not n['folder'])+1
   for _ in range(row):click('down')
   click('select');assert calls[-1][0]==2
-  for index in range(6,12):
+  for index in [7,9,10,11]:
    custom=buttons.copy();custom[index]=4;settings(custom)
    previous=len([m for m in calls if m[0]==6]);click(['up','select','down'][index%3],index%6>=3)
    assert len([m for m in calls if m[0]==6])==previous+1,('Note binding failed',index)
-  print('PASS: all six note-view press/long-press bindings',flush=True)
+  print('PASS: all four customizable note-view bindings',flush=True)
   # Configure single Select as Delete, then prove one press produces one deletion.
   custom=buttons.copy();custom[7]=3;settings(custom);previous=len([m for m in calls if m[0]==5]);click('select')
   assert len([m for m in calls if m[0]==5])==previous+1

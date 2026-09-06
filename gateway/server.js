@@ -245,8 +245,9 @@ function makeServer({vault, state, token, folder}) {
       if(req.method==='GET'&&media)return send(res,200,await require('./media').render(browser,media[1],integer('index'),url.searchParams.get('revision')||'',integer('width'),integer('height')));
       const task=url.pathname.match(/^\/v3\/notes\/([a-f0-9]{64})\/task$/);
       if(req.method==='POST'&&task)return send(res,200,browser.task(task[1],body));
+      if(req.method==='GET'&&url.pathname==='/v3/tags')return send(res,200,browser.tags(url.searchParams.get('folder'),integer('offset'),url.searchParams.get('snapshot')||''));
       if(req.method==='GET'&&url.pathname==='/v2/search')return send(res,200,await browser.search(url.searchParams.get('q'),integer('offset'),url.searchParams.get('snapshot')||''));
-      if(req.method==='GET'&&url.pathname==='/v2/browse')return send(res,200,browser.list(url.searchParams.get('folder')||'',integer('offset'),url.searchParams.get('snapshot')||''));
+      if(req.method==='GET'&&(url.pathname==='/v2/browse'||url.pathname==='/v3/browse'))return send(res,200,browser.list(url.searchParams.get('folder')||'',integer('offset'),url.searchParams.get('snapshot')||'',url.searchParams.get('sort')||'name',url.searchParams.get('tag')||''));
       if(req.method==='GET'&&/^\/v2\/notes\/[a-f0-9]{64}$/.test(url.pathname))return send(res,200,browser.read(url.pathname.split('/').pop(),integer('page')));
       if(req.method==='POST'&&url.pathname==='/v2/notes')return send(res,200,browser.create(body));
       const action=url.pathname.match(/^\/v2\/items\/([a-f0-9]{64})\/(append|delete|pin)$/);

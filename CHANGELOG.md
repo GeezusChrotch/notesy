@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0 — candidate
+
+- Touch and button paging in both directions, retaining the boundary entry.
+- Watch/settings sorting by name, modified date, created date or scoped tag.
+- Programmable Return to top and Sort notes actions.
+
+- Touch menus highlight a different item first; tap the highlighted item again to activate it.
+
+- Wire menu taps to open folders/notes and activate task rows; tap plain note text for Actions.
+
+- Up and Down single presses always navigate, including with older saved shortcuts.
+- Remove Move up / Move down from Actions; customize Select press and long presses only.
+
 ## 1.1.0 — public beta
 
 - Clean build with a matching embedded version; release packaging now rejects stale SDK metadata.

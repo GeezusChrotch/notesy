@@ -1,6 +1,6 @@
 {
   "name": "notesy",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "Organik Apps",
   "description": "Dictate and read Obsidian notes on Pebble",
   "license": "MIT",
@@ -64,7 +64,9 @@
       "CHECKED": 30,
       "WIDTH": 31,
       "HEIGHT": 32,
-      "PIXELS": 33
+      "PIXELS": 33,
+      "SORT": 34,
+      "TAG": 35
     },
     "resources": {
       "media": [

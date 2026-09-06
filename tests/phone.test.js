@@ -24,11 +24,13 @@ test('capture is acknowledged after phone persistence and saved only after the M
 });
 test('settings shows connection progress, success and errors with browser window.status semantics',()=>{
  const p=phone();p.handlers.showConfiguration();const html=decodeURIComponent(p.urls[0].split(',').slice(1).join(','));
- const elements={};for(const id of ['folder-filter','folder-tree','folder-status','folders-load','folders-apply','marquee-speed','buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
+ const elements={};for(const id of ['sorting','note-sort','note-tag','sort-tags','load-sort-tags','sort-tag-status','folder-filter','folder-tree','folder-status','folders-load','folders-apply','marquee-speed','buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
  for(let i=0;i<12;i++)elements['button-'+i]={value:String(require('../src/pkjs/buttons').normalize()[i])};
  let request;const context={document:{getElementById:id=>elements[id]},location:{href:''},XMLHttpRequest:function(){request=this;this.open=()=>{};this.setRequestHeader=()=>{};this.send=()=>{};}};
  let browserStatus='';Object.defineProperty(context,'status',{get:()=>browserStatus,set:v=>{browserStatus=String(v);},configurable:true});
- vm.runInNewContext(html.split('<script>')[1].split('</script>')[0],context);
+ // The full shared UI is exercised by the coordinator's real-browser checks.
+ context.window={organikSavedThemes:()=>[]};
+ vm.runInNewContext(html.split('<script>')[1].split('</script>')[0].split(';(function organikSettingsClient')[0],context);
  elements.pair.value=JSON.stringify(config);elements.test.onclick();assert.equal(elements.status.textContent,'Connecting…');
  request.status=200;request.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId});request.onload();assert.equal(elements.status.textContent,'Connected to your vault.');
  elements['appearance-preset'].value='2';elements['appearance-preset'].onchange();
@@ -50,14 +52,14 @@ test('phone routes append to the chosen note and only confirms an acknowledged d
 test('browser lists carry folder types, pins, page positions and stale replies are ignored',()=>{
  const p=phone(),c={...config,browserId:'b'.repeat(64),root:'c'.repeat(64)};p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify(c))});
  const send=(seq,offset)=>p.handlers.appmessage({payload:{COMMAND:1,API:2,REQUEST:seq,FOLDER_ID:c.root,PAGE:offset,SNAPSHOT:'abc'}});
- send(21,0);send(22,15);assert.match(p.requests[1].url,/v2\/browse/);assert.match(p.requests[1].url,/offset=15&snapshot=abc/);
+ send(21,0);send(22,15);assert.match(p.requests[1].url,/v3\/browse/);assert.match(p.requests[1].url,/offset=15&snapshot=abc/);
  function reply(req,title){req.status=200;req.responseText=JSON.stringify({items:[{id:'d'.repeat(64),title,folder:true,pinned:true}],id:c.root,parent:'',offset:15,total:31,title:'Vault',snapshot:'abc'});req.onload();}
  reply(p.requests[1],'Current');reply(p.requests[0],'Stale');const row=p.messages.find(m=>m.TITLE==='Current');assert.equal(row.ENTRY_KIND,1);assert.equal(row.PINNED,1);assert.ok(!p.messages.some(m=>m.TITLE==='Stale'));
 });
 test('phone learns browser identity from existing pairing and sends all twelve button bindings',()=>{
  const p=phone();p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,buttons:[3,2,1,4,5,6,7,0,0,2,4,5]}))});p.handlers.ready();
  const req=p.requests[0];req.status=200;req.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId,browserId:'b'.repeat(64),root:'c'.repeat(64)});req.onload();
- const settings=p.messages.filter(m=>m.TYPE===6).at(-1);assert.equal(settings.API,2);assert.equal(settings.BUTTONS,'3,2,1,4,5,6,7,0,0,2,4,5');assert.equal(settings.FOLDER_ID,'c'.repeat(64));
+ const settings=p.messages.filter(m=>m.TYPE===6).at(-1);assert.equal(settings.API,2);assert.equal(settings.BUTTONS,'0,2,0,4,5,6,0,0,0,2,4,5');assert.equal(settings.FOLDER_ID,'c'.repeat(64));
  p.handlers.appmessage({payload:{COMMAND:3,API:2,NOTE_ID:'v2_phone_draft',TEXT:'Here',FOLDER_ID:'d'.repeat(64),VAULT_ID:'b'.repeat(64)}});
  assert.match(p.requests[1].url,/v2\/notes$/);assert.equal(JSON.parse(p.requests[1].body).folderId,'d'.repeat(64));
 });
@@ -90,7 +92,7 @@ test('converted image transport sends bounded byte chunks and ignores superseded
  const chunks=p.messages.filter(m=>m.TYPE===17);assert.deepEqual(chunks.map(m=>m.PIXELS.length),[512,88]);assert.ok(chunks.every(m=>m.REQUEST===81));assert.deepEqual(chunks.flatMap(m=>Array.from(m.PIXELS)),Array.from(data));assert.ok(p.messages.some(m=>m.TYPE===18));
 });
 test('Stitch receives the saved destination and both Stitch shortcuts survive settings',()=>{
- const p=phone(),target='e'.repeat(64),buttons=[9,0,0,4,5,1,0,10,0,4,2,6];
+ const p=phone(),target='e'.repeat(64),buttons=[0,9,0,4,5,1,0,10,0,4,2,6];
  p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,buttons}))});
  assert.equal(p.messages.filter(m=>m.TYPE===6).at(-1).BUTTONS,buttons.join(','));
  p.handlers.appmessage({payload:{COMMAND:3,NOTE_ID:'stitch_phone_first',TEXT:'First section'}});
@@ -99,4 +101,14 @@ test('Stitch receives the saved destination and both Stitch shortcuts survive se
  assert.equal(p.messages.find(m=>m.TYPE===8).TARGET_ID,target);
  p.handlers.appmessage({payload:{COMMAND:3,NOTE_ID:'stitch_phone_first',TEXT:'First section'}});
  assert.equal(p.requests.length,1);assert.equal(p.messages.at(-1).TARGET_ID,target);
+});
+
+test('watch sorting persists after success and scoped tag pages use a separate snapshot route',()=>{
+ const p=phone(),c={...config,browserId:'b'.repeat(64),root:'c'.repeat(64)};p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify(c))});
+ p.handlers.appmessage({payload:{COMMAND:1,API:2,REQUEST:301,FOLDER_ID:c.root,PAGE:14,SORT:2,TAG:''}});
+ assert.match(p.requests[0].url,/\/v3\/browse\?/);assert.match(p.requests[0].url,/sort=created/);assert.match(p.requests[0].url,/offset=14/);
+ const req=p.requests[0];req.status=200;req.responseText=JSON.stringify({items:[],id:c.root,parent:'',offset:14,total:0,title:'Vault',snapshot:'xyz'});req.onload();
+ assert.equal(JSON.parse(p.data['stonenotes.config']).sort,2);
+ p.handlers.appmessage({payload:{COMMAND:10,API:2,REQUEST:302,FOLDER_ID:c.root,PAGE:14,SNAPSHOT:'tagsnap'}});
+ assert.match(p.requests[1].url,/\/v3\/tags\?folder=/);assert.match(p.requests[1].url,/offset=14&snapshot=tagsnap/);assert.equal(JSON.parse(p.data['stonenotes.config']).sort,2);
 });

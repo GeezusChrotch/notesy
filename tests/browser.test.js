@@ -85,3 +85,40 @@ test('search reports a result cap and title matches rank above approximate and b
  const f=fixture(t);add(f,'Garden.md');add(f,'Gardens.md');add(f,'Other.md','Garden');for(let i=0;i<105;i++)add(f,'Garden details '+i+'.md');
  const results=await f.browser.search('garden');assert.equal(results.total,100);assert.equal(results.limited,true);assert.equal(results.partial,false);assert.equal(results.items[0].title,'Garden');assert.match(results.title,/Top 100/);
 });
+
+test('sorts full snapshots by name, modification and creation dates with stable paging',t=>{
+ const f=fixture(t);for(let i=0;i<48;i++){const name='Note '+i+'.md';add(f,name);fs.utimesSync(path.join(f.vault,name),1000+i,1000+i);}
+ let a=f.browser.list('',0,'','modified');assert.equal(a.items[0].title,'Note 47');
+ const b=f.browser.list('',14,a.snapshot,'modified'),c=f.browser.list('',28,a.snapshot,'modified'),d=f.browser.list('',42,a.snapshot,'modified');
+ assert.equal(a.items.at(-1).id,b.items[0].id);assert.equal(new Set([...a.items,...b.items,...c.items,...d.items].map(n=>n.id)).size,48);
+ assert.deepEqual(f.browser.list('',14,a.snapshot,'modified').items,b.items);
+ assert.throws(()=>f.browser.list('',0,a.snapshot,'name'),/sort changed/);
+ const named=f.browser.list('',0,'','name');assert.equal(named.items[0].title,'Note 0');assert.equal(named.items[2].title,'Note 2');
+ const created=f.browser.list('',0,'','created');assert.ok(created.items.every((n,i,items)=>!i||items[i-1].created>=n.created));
+ add(f,'Folder/Child.md');f.browser.pin(named.items[2].id,true);
+ const pins=f.browser.list('',0,'','modified');assert.equal(pins.items[0].id,named.items[2].id);assert.equal(pins.items[1].title,'Folder');
+});
+test('tag picker is scoped, paginated, deduplicated and filters notes with pinned order preserved',t=>{
+ const f=fixture(t);add(f,'A.md','---\ntags: [work, "Home"]\n---\n#work #other/nested\n```\n#ignored\n```');
+ add(f,'B.md','---\ntags:\n - work\n - errands\n---\n#work');add(f,'Folder/Nested.md','#secret');
+ let tags=f.browser.tags();assert.deepEqual(tags.items.map(n=>n.title),['#errands','#home','#other/nested','#work']);
+ const work=tags.items.find(n=>n.title==='#work');assert.equal(work.location,'2 notes');
+ let notes=f.browser.list('',0,'','tag',work.id);assert.deepEqual(notes.items.map(n=>n.title),['A','B']);
+ f.browser.pin(notes.items[1].id,true);assert.equal(f.browser.list('',0,'','tag',work.id).items[0].title,'B');
+ const folder=f.browser.list().items.find(n=>n.folder);assert.deepEqual(f.browser.tags(folder.id).items.map(n=>n.title),['#secret']);
+ add(f,'Many.md',Array.from({length:40},(_,i)=>'#tag'+i).join(' '));tags=f.browser.tags();assert.equal(tags.total,44);assert.equal(f.browser.tags('',14,tags.snapshot).items[0].id,tags.items.at(-1).id);
+ f.browser.setHidden({vaultId:f.browser.vaultId,hidden:['Folder']});assert.throws(()=>f.browser.tags(folder.id),/hidden/);
+});
+test('tag parser ignores code, comments, link fragments and numeric-only tags',()=>{
+ const parse=require('../gateway/tags');assert.deepEqual(parse('`#code` <!-- #comment --> [link](https://x/#fragment) #123 #real #Real #nested/tag'),['nested/tag','real']);
+});
+test('authenticated new browsing routes support sort and tags while legacy clients still browse',async t=>{
+ const f=fixture(t);add(f,'Root.md','#work');await new Promise(resolve=>f.server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>f.server.close(resolve)));
+ const base='http://127.0.0.1:'+f.server.address().port;
+ async function get(route){return fetch(base+route,{headers:{Authorization:'Bearer '+'t'.repeat(40)}});}
+ assert.equal((await fetch(base+'/v3/tags')).status,401);
+ let response=await get('/v3/tags');assert.equal(response.status,200);const tags=await response.json();
+ response=await get('/v3/browse?sort=tag&tag='+tags.items[0].id);assert.equal(response.status,200);assert.equal((await response.json()).items[0].title,'Root');
+ assert.equal((await get('/v3/browse?sort=wrong')).status,400);
+ assert.equal((await get('/v2/browse')).status,200);
+});

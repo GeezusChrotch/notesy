@@ -80,9 +80,10 @@ Pins refer to paths. After renaming or moving an item, pin it again at its new l
 Phone settings offer Pome's theme presets, custom colors, font sizes and fonts supported by your
 watch. **Long menu titles** controls marquee speed from Off through Very fast.
 
-Assign short and long presses for Up, Select and Down separately in browser and note views.
+Single presses on Up and Down always navigate lists or scroll notes. Customize Select press and
+long presses for Up, Select and Down separately in browser and note views.
 Options include navigation, actions, Quick Dictate or Stitch for create/append, delete, pin, refresh and dictated search.
-If you reassign navigation, double Back opens Actions with movement controls.
+Double-press Back to open Actions, even if Select has a custom shortcut.
 
 ## When the Mac is unavailable
 
@@ -92,3 +93,19 @@ if you navigate elsewhere. Reopen Notesy to retry after reconnecting. Phone sett
 pending text for recovery after a vault change. Do not erase Pebble data while captures are pending.
 
 For precise storage, size and paging limits, see [README](../README.md#limits).
+
+## Touch controls
+
+On a touch-capable watch with touch enabled, tap a different folder, note, task or action row to highlight it first. Its title can scroll while you read. Tap the highlighted row again to open or activate it (including toggling a task checkbox); no quick double-tap is required. Tap plain note text to open Actions. Swipes scroll; physical buttons continue to work. Taps use these standard actions regardless of custom Select shortcuts.
+
+## Browsing, sorting and returning to the top (1.2.0)
+
+Notesy holds 15 entries on the watch at a time. Reaching an edge by touch or button navigation loads the adjacent page, with one overlapping entry so a boundary note is not skipped. Scroll up to return through earlier pages. This applies to folders, the vault root, search results and tag lists. It is not a 15-note limit.
+
+Open **Actions → Sort notes** for **Name (A–Z)**, **Date modified (newest first)**, **Date created (newest first)** or **Tag**. Phone settings offer the same choices under **Vault → Sorting**. Successful watch sorting choices are saved to phone settings. Folder rows remain alphabetized before notes, and pinned items remain at the top of the vault.
+
+**Tag** opens a paged list of tags from notes directly in the current folder. At the vault root it lists tags from root notes, not all nested folders. Selecting a tag shows matching notes in name order. Back returns from the matching notes to the tag list; Back again leaves tag mode. Tags include inline hashtags and common Obsidian `tags` property forms (a string, inline list or YAML list); code blocks and inline code are ignored. Nested tags are exact matches. Notes with no tags do not appear in filtered results.
+
+**Actions → Return to top** goes to the first entry in the current folder or vault using the current sort. From an open note it returns to that browsing location; from search it returns to the folder. Assign **Return to top** or **Sort notes** to Select or any long press under **Shortcuts**. Up/Down single presses always navigate.
+
+Creation dates use the filesystem creation time supplied by macOS, which can change when files are copied or restored. If a creation time is unavailable, modified time is used. Hidden folders remain hidden. New browsing requires the matching 1.2.0 Notesy service in Organik Apps Pebble Connector; update the Connector before installing this watch build.

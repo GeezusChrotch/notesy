@@ -52,21 +52,53 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     const e=this.resolve(id),name=path.basename(e.relative)||'Vault';
     return {id,title:shortText(e.folder?name:name.replace(/\.md$/i,'').replace(/^(\d{4}-\d{2}-\d{2} - \d{1,2})\.(\d{2}[ap]m - )/,'$1:$2')),folder:e.folder,pinned:this.index.pins.includes(id)};
   }
-  list(id,offset=0,snapshot=''){
+  children(directory){
+    return fs.readdirSync(this.checked(directory.relative,true),{withFileTypes:true})
+      .filter(e=>!e.name.startsWith('.')&&(e.isDirectory()||(e.isFile()&&/\.(?:md|excalidraw)$/i.test(e.name))))
+      .filter(e=>!this.hidden(directory.relative?directory.relative+'/'+e.name:e.name))
+      .map(e=>this.remember(directory.relative?directory.relative+'/'+e.name:e.name,e.isDirectory()));
+  }
+  noteTags(id){
+    const e=this.resolve(id);if(e.folder)return [];
+    const file=this.checked(e.relative,false),fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
+    try{const stat=fs.fstatSync(fd);if(!stat.isFile()||stat.size>8*1024*1024)throw new Fault(413,'A note is too large to index tags (8 MB limit).');
+      const data=fs.readFileSync(fd);if(data.length>8*1024*1024)throw new Fault(413,'A note grew beyond the tag indexing limit.');
+      return require('./tags')(data.toString('utf8'));
+    }finally{fs.closeSync(fd);}
+  }
+  tags(id,offset=0,snapshot=''){
+    id=id||this.root;const directory=this.resolve(id,true),key='tags:'+id;
+    let view=snapshot&&this.snapshots.get(snapshot);
+    if(snapshot&&(!view||view.id!==key||view.expires<Date.now()))throw new Fault(409,'Tag listing expired. Refresh to continue.');
+    if(!view){
+      const counts=new Map();for(const note of this.children(directory))for(const tag of this.noteTags(note))counts.set(tag,(counts.get(tag)||0)+1);
+      const items=[...counts].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([tag,count])=>({id:hash('tag:'+tag),title:'#'+tag,location:count+' notes',folder:false,pinned:false}));
+      if(items.length>60000)throw new Fault(413,'Too many tags in this folder.');
+      snapshot=require('node:crypto').randomBytes(12).toString('hex');view={id:key,items,expires:Date.now()+30*60*1000};
+      if(this.snapshots.size>=32)this.snapshots.delete(this.snapshots.keys().next().value);this.snapshots.set(snapshot,view);this.flush();
+    }
+    return {vaultId:this.vaultId,id,parent:'',title:'Tags: '+(directory.relative?shortText(path.basename(directory.relative)):'Vault'),items:view.items.slice(offset,offset+15),offset,total:view.items.length,snapshot};
+  }
+  list(id,offset=0,snapshot='',sort='name',tag=''){
     id=id||this.root;const directory=this.resolve(id,true);
+    if(!['name','modified','created','tag'].includes(sort))throw new Fault(400,'Unknown note sort.');
+    if(tag&&!/^[a-f0-9]{64}$/.test(tag))throw new Fault(400,'Invalid tag.');
+    const viewKey=id+':'+sort+':'+tag;
     for(const [key,value] of this.snapshots)if(value.expires<Date.now())this.snapshots.delete(key);
     let view=snapshot&&this.snapshots.get(snapshot);
-    if(snapshot&&(!view||view.id!==id))throw new Fault(409,'Folder listing expired. Refresh to continue.');
+    if(snapshot&&(!view||view.id!==viewKey))throw new Fault(409,'Folder listing expired or sort changed. Refresh to continue.');
     if(!view){
-      const children=fs.readdirSync(this.checked(directory.relative,true),{withFileTypes:true})
-        .filter(e=>!e.name.startsWith('.')&&(e.isDirectory()||(e.isFile()&&/\.(?:md|excalidraw)$/i.test(e.name))))
-        .filter(e=>!this.hidden(directory.relative?directory.relative+'/'+e.name:e.name))
-        .map(e=>this.remember(directory.relative?directory.relative+'/'+e.name:e.name,e.isDirectory()));
-      const pins=id===this.root?this.index.pins.filter(key=>{try{this.resolve(key);return true;}catch{return false;}}):[];
-      const entries=children.filter(key=>!pins.includes(key)).map(key=>this.item(key)).sort((a,b)=>Number(b.folder)-Number(a.folder)||a.title.localeCompare(b.title,undefined,{numeric:true})||a.id.localeCompare(b.id));
+      let children=this.children(directory);
+      if(sort==='tag')children=children.filter(key=>!this.index.entries[key].folder&&this.noteTags(key).some(t=>hash('tag:'+t)===tag));
+      const pins=id===this.root?this.index.pins.filter(key=>{try{this.resolve(key);return sort!=='tag'||children.includes(key);}catch{return false;}}):[];
+      const compareName=(a,b)=>a.title.localeCompare(b.title,undefined,{numeric:true})||a.id.localeCompare(b.id);
+      const entries=children.filter(key=>!pins.includes(key)).map(key=>{
+        const item=this.item(key),e=this.resolve(key),stat=fs.statSync(this.checked(e.relative,e.folder));
+        return {...item,modified:stat.mtimeMs,created:stat.birthtimeMs>0?stat.birthtimeMs:stat.mtimeMs};
+      }).sort((a,b)=>Number(b.folder)-Number(a.folder)||((sort==='modified'||sort==='created')&&!a.folder?b[sort]-a[sort]:0)||compareName(a,b));
       const items=pins.map(key=>this.item(key)).concat(entries);
       if(items.length>60000)throw new Fault(413,'This folder has more than 60,000 entries. Organize it into smaller folders.');
-      snapshot=require('node:crypto').randomBytes(12).toString('hex');view={id,items,expires:Date.now()+30*60*1000};
+      snapshot=require('node:crypto').randomBytes(12).toString('hex');view={id:viewKey,items,expires:Date.now()+30*60*1000};
       if(this.snapshots.size>=32)this.snapshots.delete(this.snapshots.keys().next().value);
       this.snapshots.set(snapshot,view);this.flush();
     }
