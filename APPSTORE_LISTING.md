@@ -1,10 +1,10 @@
 # Notesy — Pebble Appstore submission
 
-Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — existing listing; 1.4.6 update prepared for the release coordinator.
+Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — existing listing; 1.4.7 update prepared for the release coordinator.
 
 - Name: Notesy
 - Developer: Organik Apps
-- Version: 1.4.6
+- Version: 1.4.7
 - Category: Utilities
 - Platforms: Pebble Time (basalt), Pebble Time 2 (emery)
 - Price: Free
@@ -24,14 +24,14 @@ Dictate new notes or append to existing ones. Quick Dictate captures one 15-seco
 
 Browse folders and root notes, loading more as you scroll in either direction. Sort by name, modified date, created date or folder-scoped tag. Return to top jumps to the first entry.
 
-Scroll notes naturally, open linked notes, check tasks, and view local pictures and Excalidraw drawings. Browse and pin PDFs or scroll their numbered pages inline. PDF previews are read-only, with no zoom; fine print may be small. Limits: 20 MB and 1,000 pages per PDF.
+Scroll notes naturally, open linked notes, read complete task text, check tasks, and view local pictures and Excalidraw drawings. Browse and pin PDFs or scroll their numbered pages inline. PDF previews are read-only, with no zoom; fine print may be small. Limits: 20 MB and 1,000 pages per PDF.
 
 Choose Natural, High contrast or Original processing for photos, drawings and PDFs. Pin favorites and hide folders. Tap to highlight and read a scrolling title; tap again to open.
 
 Customize themes, fonts, colors, marquee speed, Select, long presses and Double Back in phone settings. Up and Down always navigate.
 
-Requires macOS 14+, Organik Apps Pebble Connector 0.8.0+, and Tailscale on Mac and phone. Keep the Mac awake. iPhone is the tested setup. No Obsidian plugin, subscription, Notesy account or analytics.
+Requires macOS 14+, Organik Apps Pebble Connector 0.8.1+, and Tailscale on Mac and phone. Keep the Mac awake. iPhone is the tested setup. No Obsidian plugin, subscription, Notesy account or analytics.
 
-Local attachments use your private connection; remote web images and full plugin layouts aren't supported. The update is installed and automated checks pass; PDF/image visual acceptance and fresh setup testing remain pending.
+Local attachments use your private connection; remote web images and full plugin layouts aren't supported. The task-text fix is installed and watch-tested; broader PDF/image acceptance and fresh setup testing remain pending.
 
 Setup: https://github.com/GeezusChrotch/notesy

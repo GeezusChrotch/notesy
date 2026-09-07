@@ -1,3 +1,17 @@
+# Notesy 1.4.7 — public beta release preparation
+
+Publication authorized after Josh reported “Working great” for the installed task-text fix. Requires matching public Organik Apps Pebble Connector 0.8.1 or later. The coordinator exclusively owns the Pebble dashboard.
+
+- Frozen runtime source: `6820b8c802303d188ea914f5176d27c30f5f5490`.
+- Exact installed PBW SHA-256: `4de0c32cc86e851fc75bb9c390d3d941976c61ae92162192430e20257b13db03`.
+- 93 automated tests and clean Basalt/Emery builds passed; packaged Connector task-text checks passed.
+- Physical task-text acceptance confirmed. Fresh setup and broader PDF/image visual acceptance remain separate.
+- Release preparation does not rebuild the accepted watch artifact. GitHub publication waits for the matching public Connector.
+
+See [release notes](RELEASE_NOTES_1.4.7.md) and [task-text validation](TASK_TEXT_VALIDATION.md). Older entries below are historical.
+
+---
+
 # Notesy 1.4.6 — published public beta
 
 Publication authorized through the release coordinator on 2026-09-07. Requires public Organik Apps Pebble Connector 0.8.0 or later. This task owns GitHub and Pages; the coordinator exclusively owns the Pebble dashboard.

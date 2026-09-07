@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.7 — complete task text
+
+Measure checkbox rows with the selected theme font, preserve long UTF-8 task text through scrolling continuations, and relayout when themes change. One checkbox still controls the original task. Requires Connector 0.8.1+. The installed fix was accepted on the watch. See [release notes](docs/RELEASE_NOTES_1.4.7.md).
+
 ## 1.4.6 — PDF and image previews
 
 Adds browsable/pinnable read-only PDFs, inline numbered pages, Obsidian page-specific embeds, and Natural/High contrast/Original image modes for photos, drawings and PDFs. Includes the local 1.4.5 image-processing changes. Requires public Connector 0.8.0+. See [release notes](docs/RELEASE_NOTES_1.4.6.md) for validation and preview limits.

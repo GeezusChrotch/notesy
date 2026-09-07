@@ -6,4 +6,4 @@ The reported note was inspected read-only. No vault content was changed. Synthet
 
 Package: `dist/Notesy-1.4.7.pbw`, SHA-256 `4de0c32cc86e851fc75bb9c390d3d941976c61ae92162192430e20257b13db03`.
 
-Requires matching local Connector gateway/content.js update to preserve text beyond the first block. Renderer/helper unchanged. Connector deployment and automatic serial watch installation are requested separately; physical acceptance remains pending. No public publication is authorized for this fix.
+Requires matching local Connector gateway/content.js update to preserve text beyond the first block. Renderer/helper unchanged. Connector 0.8.1 build 20 was deployed and verified. The exact watch package installed successfully; Josh reported “Working great” for the task-text fix and authorized publication. Public publication is recorded separately in RELEASE_STATUS.md.
