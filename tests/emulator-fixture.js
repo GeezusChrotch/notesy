@@ -24,6 +24,10 @@ if(process.env.WATCH_TEST_LONG_LOG){
  const entry=i=>`### Entry ${i} at 8:30 AM\n\n| Category | Detail | Severity |\n|---|---|---|\n| General | A routine observation with several words | Normal |\n\n**Notes**\n\nA longer entry containing ordinary text and punctuation. It should stay visible through every scroll position. ${'Additional observations fill this paragraph. '.repeat(3)}\n\n---\n\n`;
  fs.writeFileSync(path.join(vault,'Projects','Project plan.md'),'# Long log\n\n'+Array.from({length:18},(_,i)=>entry(i+1)).join(''));
 }
+if(process.env.WATCH_TEST_FORMATTING){
+ fs.writeFileSync(path.join(vault,'Projects','Project plan.md'),'# Formatting\n\nNormal <span style="color: red; font-weight:700">bold</span> and <em>italic</em>.\nSecond line stays normal.\nThird line also stays normal.\n\n<span style="font-style:italic">Italic <strong>and bold</strong></span> then normal.\n\n~~Intentionally old~~ then normal.\n\n**~~Bold and old~~** then normal.\n\n<span style="font-weight:400">No tags &amp; no accidental strike.</span>\n\n`<span>literal code</span>`\n\n[[Linked|Open linked note]]');
+ fs.writeFileSync(path.join(vault,'Projects','Linked.md'),'Linked note still opens.');
+}
 const {server,browser}=makeServer({vault,state:path.join(root,'state'),token:'fixture-token-'.repeat(4)});
 const projects=browser.list().items.find(n=>n.title==='Projects');const projectNote=browser.list(projects.id).items.find(n=>n.title==='Project plan');browser.pin(projectNote.id,true);
 server.listen(0,'127.0.0.1',()=>process.stdout.write(JSON.stringify({port:server.address().port,vaultId:browser.vaultId,root:browser.root,projects:projects.id,note:projectNote.id})+'\n'));

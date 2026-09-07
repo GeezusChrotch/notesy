@@ -113,6 +113,15 @@ def touch_point(x,y,end=None,held_shot=None):
    if held_shot:shot(held_shot)
   command('input-send-event',{'events':[{'type':'btn','data':{'button':'left','down':False}}]})
  settle()
+def formatting_checks():
+ settings();click('down');click('select');shot('formatting-start.png')
+ blocks=read_results[-1]['blocks'];assert not any('<span style' in b.get('text','') for b in blocks)
+ for i in range(34):
+  click('down')
+  if i in (4,8,12,16,20,25,33):shot('formatting-'+str(i)+'.png')
+ for _ in range(4):click('down')
+ click('select');assert read_results[-1]['title']=='Linked';click('back');assert read_results[-1]['title']=='Project plan'
+ print('PASS: HTML/Markdown formatting delivered without leaked tags; linked-note navigation preserved',flush=True)
 def long_log_checks():
  settings();click('down');click('select');blank=[]
  for i in range(85):
@@ -347,7 +356,8 @@ def refresh_checks():
  print('PASS: append confirmation during reader loading is retained and refreshes the open note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_LONG_LOG'):long_log_checks()
+ if os.environ.get('WATCH_TEST_FORMATTING'):formatting_checks()
+ elif os.environ.get('WATCH_TEST_LONG_LOG'):long_log_checks()
  elif os.environ.get('WATCH_TEST_DOCUMENT_DRAWING'):document_drawing_checks()
  elif os.environ.get('WATCH_TEST_DOCUMENT_MEDIA'):document_media_checks()
  elif os.environ.get('WATCH_TEST_DOCUMENT_ONLY'):document_checks()

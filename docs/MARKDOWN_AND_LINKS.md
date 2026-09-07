@@ -39,7 +39,9 @@ This is ordinary vault-note navigation, not execution of Obsidian plugins.
 - Tasks remain interactive checkboxes. Pictures and Excalidraw retain their existing
   preview behavior. Text and previews scroll continuously; only links and task checkboxes can receive focus.
 
-This is a compact Markdown subset. Tables remain text; HTML, CSS, mathematical
+Inline HTML spans and common emphasis tags retain readable text and supported bold, italic, underline or strikethrough styling. Line breaks and common HTML entities are supported. Font/color/layout attributes use the selected watch theme instead. See [formatting correction](HTML_FORMATTING_VALIDATION.md) for the matching watch and Connector requirement.
+
+This is a compact Markdown subset. Tables remain text; full HTML/CSS layout, mathematical
 notation, reference-style links, transcluded notes, callout styling and plugin
 rendering are not implemented. Code is displayed without syntax highlighting.
 Formatting and navigation never rewrite Markdown on disk; checking a task still

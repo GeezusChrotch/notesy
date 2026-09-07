@@ -29,9 +29,12 @@ static int markdown_width(const char *glyph,GFont font){
   int width=graphics_text_layout_get_content_size(glyph,font,GRect(0,0,512,128),GTextOverflowModeFill,GTextAlignmentLeft).w;
   width=width>0?width:1;if(slot>=0&&width<=255)s_widths[slot][key]=width;return width;
 }
+// Keep line feeds/tabs separate from style codes. New strikethrough combinations
+// use 24..31; accept legacy non-whitespace codes while paired apps transition.
+static int markdown_style(unsigned char c){if(c>=24&&c<=31)return c-16;if(c>=1&&c<=16&&c!=9&&c!=10&&c!=13)return c-1;return -1;}
 static int markdown_layout(GContext *ctx,const RichItem *item,int width,int top){
   bool plain=item->format==0;
-  for(const char *p=item->text;plain&&*p;p++)if((unsigned char)*p<=16)plain=false;
+  for(const char *p=item->text;plain&&*p;p++)if(markdown_style((unsigned char)*p)>=0)plain=false;
   if(plain){
     GFont font=theme_title_font();
     if(ctx){graphics_draw_text(ctx,item->text,font,GRect(6,top,width,item->text_height?item->text_height:8192),GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);return item->text_height;}
@@ -42,12 +45,14 @@ static int markdown_layout(GContext *ctx,const RichItem *item,int width,int top)
   if(item->format>=1&&item->format<=6&&line<s_theme_size+10)line=s_theme_size+10;
   width-=inset;bool word_start=true;uint8_t style=0;const char *p=item->text;char glyph[5];
   while(*p){
-    unsigned char c=(unsigned char)*p;if(c>=1&&c<=16){style=c-1;p++;continue;}
+    unsigned char c=(unsigned char)*p;int decoded=markdown_style(c);if(decoded>=0){style=decoded;p++;continue;}
+    if(c=='\r'){p++;continue;}
+    if(c=='\t'){x+=s_theme_size; p++;word_start=true;continue;}
     if(c=='\n'){x=0;y+=line;p++;word_start=true;continue;}
     // Wrap a whole word when it fits on a line; split only oversized words.
     if(c!=' '&&word_start){
       const char *q=p;int word=0;uint8_t look=style;
-      while(*q&&*q!=' '&&*q!='\n'){unsigned char z=(unsigned char)*q;if(z>=1&&z<=16){look=z-1;q++;continue;}int n=markdown_char(q,glyph);word+=markdown_width(glyph,markdown_font(look,item->format));q+=n;}
+      while(*q&&*q!=' '&&*q!='\n'){unsigned char z=(unsigned char)*q;int decoded=markdown_style(z);if(decoded>=0){look=decoded;q++;continue;}int n=markdown_char(q,glyph);word+=markdown_width(glyph,markdown_font(look,item->format));q+=n;}
       if(x&&word<=width&&x+word>width){x=0;y+=line;}
     }
     int n=markdown_char(p,glyph);GFont font=markdown_font(style,item->format);int advance=markdown_width(glyph,font);

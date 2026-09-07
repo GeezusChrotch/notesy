@@ -30,3 +30,7 @@ The reader now scrolls as a document: ordinary text and previews are not selecta
 ## Unpublished 1.4.1 candidate
 
 Fixes blank long-note screens by replacing menu rendering with ordinary document layers; adds smaller animated button steps and finger-tracked scrolling. Includes adaptive preview memory use on Basalt. Current Connector remains compatible. See [validation and exact package hash](LONG_NOTE_SCROLL_VALIDATION.md). Physical-watch acceptance remains pending.
+
+## Unpublished 1.4.2 candidate
+
+Fixes unintended strikethrough caused by line-break/style collisions and adds text-only inline HTML formatting. Requires matching watch and Connector gateway updates. See [validation and exact package hash](HTML_FORMATTING_VALIDATION.md). Physical deployment and acceptance remain pending.

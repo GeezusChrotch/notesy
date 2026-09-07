@@ -12,8 +12,8 @@ function parse(markdown,plainText,pages){
   const parts=parsed.markup.split(/\x11(\d+)\x12/g);let style='\x01';
   for(let i=0;i<parts.length;i++){
    if(i%2){blocks.push(parsed.web[Number(parts[i])]);continue;}
-   const part=(i?style:'')+parts[i];for(const ch of parts[i])if(ch.charCodeAt(0)>=1&&ch.charCodeAt(0)<=16)style=ch;
-   for(const markup of md.chunks(part))if(markup.replace(/[\x01-\x10]/g,'').trim())blocks.push({kind:'text',text:markup.replace(/[\x01-\x10]/g,''),markup,format});
+   const part=(i?style:'')+parts[i];for(const ch of parts[i])if(md.isStyle(ch))style=ch;
+   for(const markup of md.chunks(part))if(md.stripStyles(markup).trim())blocks.push({kind:'text',text:md.stripStyles(markup),markup,format});
   }
   blocks.push(...parsed.links);format=0;
  };
