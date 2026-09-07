@@ -740,7 +740,14 @@ static void inbox(DictionaryIterator *iter, void *context) {
     snprintf(s_snapshot,sizeof(s_snapshot),"%s",s_incoming_snapshot);
     set_status(s_tag_picker&&!s_total?"No tags in this folder":s_search&&!s_total?"No matches · search again":s_folder_title);
     int row=s_restore_row;if(row>s_count)row=s_count;if(row<0)row=0;
-    menu_layer_set_selected_index(s_menu,MenuIndex(0,row),row?MenuRowAlignCenter:MenuRowAlignTop,false);s_restoring_list=false;
+    menu_layer_set_selected_index(s_menu,MenuIndex(0,row),row?MenuRowAlignCenter:MenuRowAlignTop,false);
+    // Center-focused touch menus override Top alignment and permit positive
+    // offsets. Keep their two-tap behavior, but start each loaded list at its
+    // actual top when centering would leave empty space above the first row.
+    ScrollLayer *list_scroll=menu_layer_get_scroll_layer(s_menu);
+    GPoint list_offset=scroll_layer_get_content_offset(list_scroll);
+    if(list_offset.y>0)scroll_layer_set_content_offset(list_scroll,GPointZero,false);
+    s_restoring_list=false;
   } else if(kind==12&&s_body){
     if(s_link_target[0]){snprintf(s_current_id,sizeof(s_current_id),"%s",s_link_target);s_link_target[0]=0;s_link_back=false;}
     rich_enable();s_loading=true;s_rich_count=0;memset(s_rich_items,0,sizeof(s_rich_items));

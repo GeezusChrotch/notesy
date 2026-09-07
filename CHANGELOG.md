@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 — unreleased candidate
+
+- Start loaded lists at the top instead of centering New note in empty space; preserve two-tap selection.
+
 ## 1.3.0 — unreleased candidate
 
 - Select Obsidian wiki and inline Markdown note links; Back restores the previous note.

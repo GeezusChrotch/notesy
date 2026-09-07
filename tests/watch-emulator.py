@@ -91,6 +91,13 @@ def double_back():
  settle()
 def shot(name):
  png.from_array(Screenshot(pebble).grab_image(),'RGB;8').save(str(ROOT/'build'/name))
+def top_checks():
+ settings();shot('browse-start-top.png')
+ pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]
+ assert sum(v<64 for v in top)>len(top)//2,'Initial New note selection is padded away from the top'
+ click('down');click('select');assert read_results[-1]['title']=='Project plan'
+ click('back');shot('browse-return-top.png')
+ print('PASS: initial New note starts at screen top and normal note navigation works',flush=True)
 def link_checks():
  settings();click('down');click('select');assert read_results[-1]['title']=='Project plan';shot('markdown-heading.png')
  click('down');shot('markdown-emphasis.png');click('down');shot('markdown-link.png');click('select')
@@ -285,7 +292,8 @@ def refresh_checks():
  print('PASS: append confirmation during reader loading is retained and refreshes the open note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_LINKS_ONLY'):link_checks()
+ if os.environ.get('WATCH_TEST_TOP_ONLY'):top_checks()
+ elif os.environ.get('WATCH_TEST_LINKS_ONLY'):link_checks()
  elif os.environ.get('WATCH_TEST_REFRESH_ONLY'):refresh_checks()
  elif os.environ.get('WATCH_TEST_STITCH_ONLY') or os.environ.get('WATCH_TEST_STITCH_STOP_ONLY'):stitch_checks()
  elif os.environ.get('WATCH_TEST_SCROLL_ONLY'):scroll_checks()
