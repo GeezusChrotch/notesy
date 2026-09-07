@@ -52,7 +52,7 @@ static int markdown_layout(GContext *ctx,const RichItem *item,int width,int top)
     }
     int n=markdown_char(p,glyph);GFont font=markdown_font(style,item->format);int advance=markdown_width(glyph,font);
     if(x&&x+advance>width){x=0;y+=line;if(c==' '){p+=n;continue;}}
-    if(ctx&&top+y+line>=0&&top+y<IMAGE_HEIGHT+160){
+    if(ctx){
       GRect box=GRect(6+inset+x,top+y,advance+8,line+8);
       graphics_draw_text(ctx,glyph,font,box,GTextOverflowModeFill,GTextAlignmentLeft,NULL);
       if(style&1){box.origin.x++;graphics_draw_text(ctx,glyph,font,box,GTextOverflowModeFill,GTextAlignmentLeft,NULL);}

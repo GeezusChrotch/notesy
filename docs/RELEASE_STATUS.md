@@ -22,3 +22,7 @@ Reader tap activation and link-heavy scrolling improvements are built and emulat
 ## Unpublished 1.3.4 candidate
 
 Rightward swipe Back in the note reader and top-aligned Actions/dictation/sort menus are built and emulator-tested. This watch-only candidate works with the installed 1.3.3 gateway. See [validation and package hash](SWIPE_BACK_ACTIONS_VALIDATION.md). Physical installation and acceptance are pending.
+
+## Unpublished 1.4.0 candidate
+
+The reader now scrolls as a document: ordinary text and previews are not selectable, images load automatically, and links/tasks retain controls. Built and emulator-tested; current installed gateway is compatible. See [document reader validation and exact package hash](DOCUMENT_READER_VALIDATION.md). Physical installation and reading acceptance remain pending.

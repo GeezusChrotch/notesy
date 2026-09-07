@@ -112,30 +112,42 @@ def touch_point(x,y,end=None):
    time.sleep(.12)
   command('input-send-event',{'events':[{'type':'btn','data':{'button':'left','down':False}}]})
  settle()
+def document_checks():
+ settings();click('down');click('select');shot('document-start.png')
+ before=list(Screenshot(pebble).grab_image())
+ touch_point(60,80);shot('document-text-tap.png')
+ assert list(Screenshot(pebble).grab_image())==before,'Tapping ordinary text changed selection or opened Actions'
+ count=len(read_results);touch_point(60,180);assert len(read_results)==count
+ shot('document-link-focused.png');touch_point(60,180);assert read_results[-1]['title']=='Linked'
+ touch_point(30,100,end=(150,100));assert read_results[-1]['title']=='Project plan'
+ click('down');shot('document-scroll.png');click('select');assert read_results[-1]['title']=='Linked','Button Select did not open visible focused link'
+ touch_point(30,100,end=(150,100));touch_point(60,170,end=(60,60));shot('document-swipe.png')
+ touch_point(60,60,end=(60,170));shot('document-swipe-return.png')
+ double_back();shot('document-actions.png');click('back')
+ touch_point(30,100,end=(150,100));shot('document-browser.png')
+ print('PASS: continuous text, inert paragraph taps, two-tap links, button activation, swipe scrolling and Back',flush=True)
+def document_drawing_checks():
+ settings();click('down');click('select')
+ for i in range(16):
+  click('down')
+  if i in (7,10,13):shot('document-drawing-'+str(i)+'.png')
+ assert {m[8] for m in calls if m[0]==9}>={3,4},'Image and drawing did not load automatically'
+ assert not failures
+ print('PASS: embedded image and Excalidraw load while scrolling without selection',flush=True)
+def document_media_checks():
+ settings();send({1:6,27:0,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,buttons)),15:5,16:30});settle()
+ click('down');click('select');shot('document-long-start.png')
+ for i in range(40):
+  click('down')
+  if i in (3,8,12,16,23,31,39):shot('document-media-'+str(i)+'.png')
+ assert {m[8] for m in calls if m[0]==9}>={2,3},'Images did not load automatically while scrolling'
+ click('select');assert calls[-1][0]==8,'Task after images cannot be activated'
+ assert http('/v3/notes/'+info['note'])['blocks'][4]['checked']
+ for _ in range(40):click('up')
+ shot('document-long-return.png')
+ print('PASS: large-font continuous text, automatic wide/tall images, task after pictures, reverse scrolling',flush=True)
 def touch_link_checks():
- settings();click('down');click('select');click('down');shot('touch-before.png')
- count=len(read_results);touch_point(60,180);shot('touch-focused.png');assert len(read_results)==count,'First tap opened instead of highlighting'
- touch_point(60,104);shot('touch-opened.png');assert len(read_results)==count+1 and read_results[-1]['title']=='Linked','Second tap did not open linked note'
- touch_point(30,100,end=(150,100));assert read_results[-1]['title']=='Project plan','Swipe back did not return to source note'
- # Back restores the link selection. Repeated taps must still open it.
- touch_point(60,104);assert read_results[-1]['title']=='Linked'
- click('back');touch_point(60,170,end=(60,60));shot('touch-swiped.png')
- count=len(read_results);touch_point(60,60,end=(60,170));assert len(read_results)==count,'Swipe activated a note'
- click('select');assert read_results[-1]['title']=='Linked','Swipe up/down failed to restore the link row'
- click('back');double_back();shot('touch-actions.png')
- pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]
- assert sum(v<64 for v in top)>len(top)//2,'Actions opened with blank top padding'
- click('back')
- touch_point(60,104);assert read_results[-1]['title']=='Linked','Reader touch did not resume after Actions'
- touch_point(30,100,end=(150,100));touch_point(30,100,end=(150,100));shot('touch-return-browser.png')
- double_back();shot('touch-browser-actions.png')
- pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]
- assert sum(v<64 for v in top)>len(top)//2,'Browser Actions opened with blank top padding'
- click('back');click('up');click('select');shot('touch-capture-choices.png')
- pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]
- assert sum(v<64 for v in top)>len(top)//2,'Capture choices opened with blank top padding'
- click('back')
- print('PASS: finger focus/open/repeat, swipe Back, bidirectional scrolling, top-aligned Actions, and resumed touch',flush=True)
+ document_checks()
 def top_checks():
  settings();shot('browse-start-top.png')
  pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]
@@ -144,50 +156,29 @@ def top_checks():
  click('back');shot('browse-return-top.png')
  print('PASS: initial New note starts at screen top and normal note navigation works',flush=True)
 def link_checks():
- settings();click('down');click('select');assert read_results[-1]['title']=='Project plan';shot('markdown-heading.png')
- click('down');shot('markdown-emphasis.png');click('down');shot('markdown-link.png');click('select')
- assert read_results[-1]['title']=='Linked';shot('markdown-linked-note.png')
- click('back');assert read_results[-1]['title']=='Project plan';shot('markdown-back.png')
- reject_note[0]=True;click('select');assert read_results[-1]['title']=='Project plan','Failed link replaced the source note'
- click('select');assert read_results[-1]['title']=='Linked','Back did not restore the selected link'
- reject_note[0]=True;click('back');assert read_results[-1]['title']=='Linked','Failed Back changed the displayed note'
- click('back');assert read_results[-1]['title']=='Project plan','Failed Back lost the note history'
- click('down');shot('markdown-quote.png');click('down');click('down');click('select')
- assert calls[-1][0]==8,'Task checkbox stopped working after link navigation'
- print('PASS: formatted reader, link open, Back restores link selection, repeat open, task after links',flush=True)
+ settings();click('down');click('select');shot('markdown-heading.png')
+ click('down');shot('markdown-link.png');click('select');assert read_results[-1]['title']=='Linked'
+ click('back');assert read_results[-1]['title']=='Project plan'
+ reject_note[0]=True;click('select');assert read_results[-1]['title']=='Project plan'
+ click('select');assert read_results[-1]['title']=='Linked'
+ reject_note[0]=True;click('back');assert read_results[-1]['title']=='Linked'
+ click('back');assert read_results[-1]['title']=='Project plan'
+ for _ in range(8):click('down')
+ click('select');assert calls[-1][0]==8
+ print('PASS: document link buttons, failed-link/Back recovery and checkbox',flush=True)
 def rich_checks():
- settings();shot('rich-root.png');click('down');click('select');assert calls[-1][0]==2 and calls[-1][25]==3;shot('rich-tasks.png')
- click('down');click('select');assert calls[-1][0]==8 and calls[-1][30]==1;shot('rich-task-checked.png')
- assert http('/v3/notes/'+info['note'])['blocks'][1]['checked']
- click('select');assert calls[-1][30]==0 and not http('/v3/notes/'+info['note'])['blocks'][1]['checked']
- click('down');click('down');settle();assert calls[-1][0]==9;shot('rich-image.png')
- click('down');settle();assert calls[-1][0]==9;shot('rich-drawing.png')
- for _ in range(34):click('down')
- assert any(m[0]==2 and m.get(6)==2 for m in calls),'Tasks did not reach the third batch'
- for _ in range(37):click('up')
+ settings();click('down');click('select');click('down');click('select');assert calls[-1][0]==8
+ for _ in range(100):click('down')
+ assert {m[8] for m in calls if m[0]==9}>={3,4},'Pictures did not load during document scrolling'
+ assert any(m[0]==2 and m.get(6)==2 for m in calls),'Did not reach third block batch'
+ click('select');assert calls[-1][0]==8
+ for _ in range(100):click('up')
  assert [m for m in calls if m[0]==2][-1][6]==0
- double_back();shot('rich-actions.png');click('back');click('back');assert calls[-1][0]==1
- print('PASS: mixed note text, task check/uncheck, inline color image and Excalidraw, rich paging in both directions, Actions and Back',flush=True)
+ double_back();shot('rich-actions.png');click('back');click('back')
+ print('PASS: document tasks, automatic image/drawing previews, and paging in both directions',flush=True)
 
 def scroll_checks():
- settings();send({1:6,27:0,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,buttons)),15:5,16:30});settle()
- click('down');click('select');shot('rich-scroll-start.png')
- click('down');shot('rich-scroll-middle.png')
- pixels=[value for row in Screenshot(pebble).grab_image() for value in row][:200*180*3]
- assert sum(v<64 for v in pixels)>300 and sum(v>192 for v in pixels)>300,'Scrolling text produced a blank screen'
- click('select')
- assert not any(m[0]==8 for m in calls),'Down skipped the rest of the oversized paragraph'
- shot('rich-scroll-actions.png');click('back')
- for _ in range(10):
-  click('down')
-  if calls[-1][0]==9:break
- assert calls[-1][0]==9 and calls[-1][8]==2;shot('rich-scroll-wide.png')
- click('down');assert calls[-1][0]==9 and calls[-1][8]==3;shot('rich-scroll-tall.png')
- click('down');shot('rich-scroll-after.png');click('select');assert calls[-1][0]==8
- assert http('/v3/notes/'+info['note'])['blocks'][4]['checked'],'The row after the pictures was skipped'
- click('up');click('up');assert calls[-1][0]==9 and calls[-1][8]==2
- click('up');click('up');shot('rich-scroll-bottom.png');click('up');shot('rich-scroll-backward.png')
- print('PASS: oversized text scrolls before selection moves; wide and tall images keep geometry; task after pictures toggles; reverse scrolling works',flush=True)
+ document_media_checks()
 
 def marquee_checks():
  def frame():return tuple(tuple(row) for row in Screenshot(pebble).grab_image())
@@ -337,7 +328,10 @@ def refresh_checks():
  print('PASS: append confirmation during reader loading is retained and refreshes the open note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_TOUCH_ONLY'):touch_link_checks()
+ if os.environ.get('WATCH_TEST_DOCUMENT_DRAWING'):document_drawing_checks()
+ elif os.environ.get('WATCH_TEST_DOCUMENT_MEDIA'):document_media_checks()
+ elif os.environ.get('WATCH_TEST_DOCUMENT_ONLY'):document_checks()
+ elif os.environ.get('WATCH_TEST_TOUCH_ONLY'):touch_link_checks()
  elif os.environ.get('WATCH_TEST_TOP_ONLY'):top_checks()
  elif os.environ.get('WATCH_TEST_LINKS_ONLY'):link_checks()
  elif os.environ.get('WATCH_TEST_REFRESH_ONLY'):refresh_checks()

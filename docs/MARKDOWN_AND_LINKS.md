@@ -11,7 +11,7 @@ after that paragraph. Highlight the row and press Select. On touch watches, tap 
 different row to highlight it, then tap the highlighted row to open it. Keep the
 note-view Select assignment on Normal navigation to activate links and tasks.
 
-Back returns to the previous note and restores the selected row and scroll position.
+Back (or a rightward swipe) returns to the previous note and restores the selected row and scroll position.
 Up to twelve linked-note steps are retained; Back through that history to open more.
 Append, pin and delete act on the note currently open, including linked notes.
 
@@ -37,7 +37,7 @@ This is ordinary vault-note navigation, not execution of Obsidian plugins.
 - Lists preserve bullets or numbers. Quotes and fenced code use an inset vertical
   rule. Inline code is underlined and retains literal content.
 - Tasks remain interactive checkboxes. Pictures and Excalidraw retain their existing
-  preview behavior. Long paragraphs scroll before advancing to the next row.
+  preview behavior. Text and previews scroll continuously; only links and task checkboxes can receive focus.
 
 This is a compact Markdown subset. Tables remain text; HTML, CSS, mathematical
 notation, reference-style links, transcluded notes, callout styling and plugin
@@ -52,7 +52,7 @@ Reference: [Obsidian internal links](https://obsidian.md/help/links).
 Tap an **Open linked note** row to highlight it, then tap the highlighted row to
 open it. This also works through the reader's explicit touch handler, independently
 of custom button assignments. The link label in the paragraph remains text; the
-separate link row is the touch target. Back returns to the previous note.
+separate link row is the touch target. Back (or a rightward swipe) returns to the previous note.
 
 Web links no longer create an unavailable-link action. Named Markdown links and
 HTML anchors display their existing label, and URL labels can use a supplied

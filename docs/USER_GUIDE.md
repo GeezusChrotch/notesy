@@ -43,15 +43,14 @@ Dictate. The New note row shows the two choices before recording.
 
 ## Read, check and view
 
-Plain notes scroll as text. Notes with Markdown tasks or pictures use a content menu. Long text
-blocks scroll fully before the selection advances to the next item.
+Notes scroll as documents. Text, images and drawings move together without becoming selected. Up/Down moves a small reading step; a vertical swipe moves through the text. Only visible links and task checkboxes receive focus for activation with Select.
 
 With Select set to **Normal navigation**, selecting a task checkbox checks or unchecks it in
 Obsidian. The watch shows the change after the Mac confirms it. If the note changed in Obsidian
 since you opened it, reopen it before toggling. Custom plugin task statuses and generated queries
 are not interactive.
 
-A selected image row loads a preview automatically; Select retries an unsuccessful preview.
+Images and drawings load automatically as they enter view. They do not need to be selected. If a preview fails, scroll it out of view and back to retry. The watch keeps one decoded preview at a time; adjacent previews may briefly reload as you scroll.
 Images must be stored inside the vault. PNG, JPEG, GIF's first frame, WebP, HEIC, TIFF, BMP and
 SVG are supported. Pictures fit the watch's 64-color display; they do not support zoom or pan.
 Fine text or details in a large picture can be small.
@@ -96,7 +95,7 @@ For precise storage, size and paging limits, see [README](../README.md#limits).
 
 ## Touch controls
 
-On a touch-capable watch with touch enabled, tap a different folder, note, task or action row to highlight it first. Its title can scroll while you read. Tap the highlighted row again to open or activate it (including toggling a task checkbox); no quick double-tap is required. Tap plain note text to open Actions. Swipes scroll; physical buttons continue to work. Taps use these standard actions regardless of custom Select shortcuts.
+On a touch-capable watch with touch enabled, tap a different folder, note, task or action row to highlight it first. Its title can scroll while you read. Tap the highlighted row again to open or activate it (including toggling a task checkbox); no quick double-tap is required. Tapping note text or an image does nothing. Double-press Back for Actions. Swipe right in a note to return, and swipe vertically to scroll; physical buttons continue to work. Taps use these standard actions regardless of custom Select shortcuts.
 
 ## Browsing, sorting and returning to the top (1.2.0)
 
