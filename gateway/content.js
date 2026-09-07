@@ -25,7 +25,13 @@ function parse(markdown,plainText,pages){
   const code=line.match(/^\s{0,3}(`{3,}|~{3,})/);
   if(code){if(!fence){flush();fence=code[1];format=8;}else if(code[1][0]===fence[0]&&code[1].length>=fence.length){flush();fence='';}else paragraph.push(line);offset+=Buffer.byteLength(full);continue;}
   const task=!fence&&line.match(/^(\s*(?:>\s*)*(?:[-+*]|\d+[.)])\s+\[)([ xX])(\]\s+)(.*)$/);
-  if(task){flush();blocks.push({kind:'task',id:String(offset+Buffer.byteLength(task[1])),checked:task[2]!==' ',text:md.inline(task[4]).text||'(Untitled task)'});blocks.push(...md.inline(task[4]).links);}
+  if(task){
+   flush();const parsed=md.inline(task[4]),text=parsed.text||'(Untitled task)';
+   // Keep one checkbox/byte offset while carrying every UTF-8 character across
+   // bounded watch blocks. Continuations are ordinary scrolling text.
+   md.chunks(text).map(md.stripStyles).forEach((part,i)=>blocks.push(i?{kind:'text',text:part,markup:part,format:0}:{kind:'task',id:String(offset+Buffer.byteLength(task[1])),checked:task[2]!==' ',text:part,markup:part}));
+   blocks.push(...parsed.links);
+  }
   else if(!fence){
    const heading=line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*$/),quote=line.match(/^\s*>\s?(.*)$/),list=line.match(/^\s*([-+*]|\d+[.)])\s+(.+)$/);
    if(heading||quote||list||/^\s*(?:---+|\*\*\*+|___+)\s*$/.test(line)){

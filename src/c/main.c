@@ -26,6 +26,8 @@ static GBitmap *s_image;static int s_image_index=-1,s_image_bytes,s_image_receiv
 static char s_image_error[96];static int s_image_source_width,s_image_source_height;
 static void rich_move(bool down);static void rich_select(void);
 static void image_clear(void);
+static void document_reload(void);
+static void rich_position(int position,bool animated);
 static void markdown_reset_metrics(void);
 static bool s_scroll_to_end;
 static char s_capture_target[65],s_draft_target[65],s_last_append_id[96],s_last_append_target[65],s_delete_id[96];
@@ -283,6 +285,7 @@ static void apply_theme(void) {
     TextLayer *layers[] = {s_body, s_heading, s_page_label};
     for (unsigned i=0; i<3; i++) { text_layer_set_background_color(layers[i], s_background); text_layer_set_text_color(layers[i], s_foreground); }
   }
+  if(s_rich&&s_document_view){document_reload();rich_position(s_rich_scroll,false);layer_mark_dirty(s_document_view);}
 }
 static bool persist_draft(void) {
   size_t len = strlen(s_draft)+1;
@@ -553,7 +556,14 @@ static int rich_text_height(Layer *menu,RichItem *item){
 }
 static int16_t rich_height(Layer *menu,MenuIndex *index,void *context){
   if(index->row>=s_rich_count){return 64;}RichItem *item=&s_rich_items[index->row];
-  if(item->kind==1||item->kind==3||item->kind==4)return s_theme_size+40;
+  if(item->kind==1){
+    if(!item->text_height){
+      int height=graphics_text_layout_get_content_size(item->text,theme_title_font(),GRect(0,0,layer_get_bounds(menu).size.w-34,8192),GTextOverflowModeWordWrap,GTextAlignmentLeft).h+12;
+      item->text_height=height<36?36:height;
+    }
+    return item->text_height;
+  }
+  if(item->kind==3||item->kind==4)return s_theme_size+40;
   // Keep geometry stable while a preview loads, fails, or is evicted for another image.
   if(item->kind==2)return IMAGE_HEIGHT+34;
   return rich_text_height(menu,item);
