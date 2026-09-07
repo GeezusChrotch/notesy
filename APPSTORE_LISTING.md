@@ -1,10 +1,10 @@
 # Notesy — Pebble Appstore submission
 
-Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — existing listing; 1.4.4 update prepared for the release coordinator.
+Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — existing listing; 1.4.6 update prepared for the release coordinator.
 
 - Name: Notesy
 - Developer: Organik Apps
-- Version: 1.4.4
+- Version: 1.4.6
 - Category: Utilities
 - Platforms: Pebble Time (basalt), Pebble Time 2 (emery)
 - Price: Free
@@ -22,16 +22,16 @@ Your Obsidian vault, on your wrist. Free, MIT open source, public beta.
 
 Dictate new notes or append to existing ones. Quick Dictate captures one 15-second recording; Stitch joins sections into a longer note. Speak a search term to find likely notes.
 
-Browse folders and root notes, with more entries loading as you scroll in either direction. Sort by name, modified date, created date or tag. The tag picker lists tags from notes directly in the current folder. Return to top jumps back to the first entry.
+Browse folders and root notes, loading more as you scroll in either direction. Sort by name, modified date, created date or folder-scoped tag. Return to top jumps to the first entry.
 
-Scroll notes naturally, open linked Obsidian notes, check tasks, and view local pictures and Excalidraw previews. Pin favorites and hide folders. Tap a different item to highlight it and read its scrolling title; tap the highlighted item to activate.
+Scroll notes naturally, open linked notes, check tasks, and view local pictures and Excalidraw drawings. Browse and pin PDFs or scroll their numbered pages inline. PDF previews are read-only, with no zoom; fine print may be small. Limits: 20 MB and 1,000 pages per PDF.
 
-Choose Pome themes, fonts, colors and marquee speed. Customize Select, long presses and Double Back, including Return to top and Sort notes. Up and Down always navigate.
+Choose Natural, High contrast or Original processing for photos, drawings and PDFs. Pin favorites and hide folders. Tap to highlight and read a scrolling title; tap again to open.
 
-Requires macOS 14+, Organik Apps Pebble Connector 0.7.0+, and Tailscale on the Mac and paired phone. Keep the Mac awake. iPhone is the tested phone setup. No Obsidian plugin or subscription needed.
+Customize themes, fonts, colors, marquee speed, Select, long presses and Double Back in phone settings. Up and Down always navigate.
 
-No Notesy account, subscription or analytics. Images use your private connection; remote web images and plugin-generated views aren't supported. Automated checks pass and the installed update received positive user feedback. Fresh setup testing remains pending.
+Requires macOS 14+, Organik Apps Pebble Connector 0.8.0+, and Tailscale on Mac and phone. Keep the Mac awake. iPhone is the tested setup. No Obsidian plugin, subscription, Notesy account or analytics.
+
+Local attachments use your private connection; remote web images and full plugin layouts aren't supported. The update is installed and automated checks pass; PDF/image visual acceptance and fresh setup testing remain pending.
 
 Setup: https://github.com/GeezusChrotch/notesy
-
-Independent Organik Apps software; not affiliated with Obsidian, Pebble or Tailscale.

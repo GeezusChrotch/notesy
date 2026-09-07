@@ -114,7 +114,7 @@ Creation dates use the filesystem creation time supplied by macOS, which can cha
 See [note links and Markdown](MARKDOWN_AND_LINKS.md) for selectable linked notes,
 Back navigation, formatting support and the matching-Connector requirement.
 
-## Photo and drawing display modes (next local build)
+## Photo and drawing display modes (1.4.6)
 
 In phone settings, open **Themes → Photos and drawings**:
 
@@ -122,10 +122,10 @@ In phone settings, open **Themes → Photos and drawings**:
 - **High contrast** strengthens faint details.
 - **Original** uses the previous color conversion.
 
-Save and reopen a note to reload its previews with the selected mode. The conversion affects watch previews only; original vault attachments are unchanged. The matching Connector update is required for the new treatments.
+Save and reopen a note to reload its previews with the selected mode. The conversion affects watch previews only; original vault attachments are unchanged. Connector 0.8.0 or later is required for the new treatments.
 
-## PDFs (next local build)
+## PDFs (1.4.6)
 
 PDF files appear alongside notes in the vault browser and can be pinned or opened from a note link. Embedded PDFs such as `![[Guide.pdf]]` display their pages inline; `![[Guide.pdf#page=3]]` displays that page only. Each preview is labeled with its page number and total. Scroll normally in either direction: Notesy loads previews as pages come into view, including beyond the first set of 15 content items.
 
-These are whole-page previews, with no zoom or text selection. Fine print may be too small to read on the watch. Natural, High contrast and Original also apply to PDFs, using the clean-line drawing treatment. PDFs are read-only: dictate into a separate note, and remove PDF attachments in Obsidian. Limits are 20 MB and 1,000 pages per PDF; locked or damaged PDFs show an explanation. The matching Connector update is required.
+These are whole-page previews, with no zoom or text selection. Fine print may be too small to read on the watch. Natural, High contrast and Original also apply to PDFs, using the clean-line drawing treatment. PDFs are read-only: dictate into a separate note, and remove PDF attachments in Obsidian. Limits are 20 MB and 1,000 pages per PDF; locked or damaged PDFs show an explanation. Connector 0.8.0 or later is required.

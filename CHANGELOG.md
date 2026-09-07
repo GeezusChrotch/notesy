@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.6 — PDF and image previews
+
+Adds browsable/pinnable read-only PDFs, inline numbered pages, Obsidian page-specific embeds, and Natural/High contrast/Original image modes for photos, drawings and PDFs. Includes the local 1.4.5 image-processing changes. Requires public Connector 0.8.0+. See [release notes](docs/RELEASE_NOTES_1.4.6.md) for validation and preview limits.
+
 ## 1.4.4 — public beta
 
 Continuous document scrolling; blank-page repairs; linked-note navigation and swipe Back; inline HTML/Markdown cleanup and strikethrough fix; full-height reader; configurable Double Back; shared top-aligned startup. Requires Connector 0.7.0+. See [release notes](docs/RELEASE_NOTES_1.4.4.md) for validation limits.
