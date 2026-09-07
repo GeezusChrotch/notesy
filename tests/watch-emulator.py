@@ -91,7 +91,7 @@ def double_back():
  settle()
 def shot(name):
  png.from_array(Screenshot(pebble).grab_image(),'RGB;8').save(str(ROOT/'build'/name))
-def touch_point(x,y,end=None):
+def touch_point(x,y,end=None,held_shot=None):
  import socket
  port=int(os.environ['NOTESY_QMP_PORT'])
  with socket.create_connection(('127.0.0.1',port),timeout=3) as sock:
@@ -110,8 +110,20 @@ def touch_point(x,y,end=None):
   if end:
    command('input-send-event',{'events':[{'type':'abs','data':{'axis':'x','value':round(end[0]*32767/199)}},{'type':'abs','data':{'axis':'y','value':round(end[1]*32767/227)}}]})
    time.sleep(.12)
+   if held_shot:shot(held_shot)
   command('input-send-event',{'events':[{'type':'btn','data':{'button':'left','down':False}}]})
  settle()
+def long_log_checks():
+ settings();click('down');click('select');blank=[]
+ for i in range(85):
+  touch_point(60,150,end=(60,118))
+  pixels=list(Screenshot(pebble).grab_image());dark=sum(v<64 for row in pixels[:195] for v in row)
+  if dark<50:
+   blank.append(i);shot('long-log-blank-'+str(i)+'.png')
+  if i in (0,20,40,60,84):shot('long-log-'+str(i)+'.png')
+ assert not blank,'Blank document positions: '+str(blank)
+ assert any(m[0]==2 and m.get(6,0)>=1 for m in calls),'Long log did not cross a batch boundary'
+ print('PASS: 85 long-log positions with headings/tables/separators, no blank screens, multiple batches',flush=True)
 def document_checks():
  settings();click('down');click('select');shot('document-start.png')
  before=list(Screenshot(pebble).grab_image())
@@ -120,30 +132,37 @@ def document_checks():
  count=len(read_results);touch_point(60,180);assert len(read_results)==count
  shot('document-link-focused.png');touch_point(60,180);assert read_results[-1]['title']=='Linked'
  touch_point(30,100,end=(150,100));assert read_results[-1]['title']=='Project plan'
- click('down');shot('document-scroll.png');click('select');assert read_results[-1]['title']=='Linked','Button Select did not open visible focused link'
- touch_point(30,100,end=(150,100));touch_point(60,170,end=(60,60));shot('document-swipe.png')
+ click('down');click('down');shot('document-scroll.png');click('select');assert read_results[-1]['title']=='Linked','Button Select did not open visible focused link'
+ touch_point(30,100,end=(150,100));touch_point(60,170,end=(60,60),held_shot='document-drag-held.png');shot('document-swipe.png')
  touch_point(60,60,end=(60,170));shot('document-swipe-return.png')
  double_back();shot('document-actions.png');click('back')
  touch_point(30,100,end=(150,100));shot('document-browser.png')
  print('PASS: continuous text, inert paragraph taps, two-tap links, button activation, swipe scrolling and Back',flush=True)
 def document_drawing_checks():
- settings();click('down');click('select')
- for i in range(16):
+ settings();click('down');click('select');colors=[False,False]
+ def check_colors():
+  for row in Screenshot(pebble).grab_image():
+   for n in range(0,len(row),3):
+    r,g,b=row[n:n+3]
+    if r>g+40 or b>g+40:colors[0]=True
+    if g>r+25 and g>b+25:colors[1]=True
+ for i in range(24):
   click('down')
-  if i in (7,10,13):shot('document-drawing-'+str(i)+'.png')
+  if i in (7,10,13,21):shot('document-drawing-'+str(i)+'.png');check_colors()
  assert {m[8] for m in calls if m[0]==9}>={3,4},'Image and drawing did not load automatically'
+ shot('document-drawing-final.png');check_colors();assert all(colors),'Previews were requested but their pixels were not rendered'
  assert not failures
  print('PASS: embedded image and Excalidraw load while scrolling without selection',flush=True)
 def document_media_checks():
  settings();send({1:6,27:0,25:2,26:info['vaultId'],18:info['root'],24:','.join(map(str,buttons)),15:5,16:30});settle()
  click('down');click('select');shot('document-long-start.png')
- for i in range(40):
+ for i in range(80):
   click('down')
   if i in (3,8,12,16,23,31,39):shot('document-media-'+str(i)+'.png')
  assert {m[8] for m in calls if m[0]==9}>={2,3},'Images did not load automatically while scrolling'
  click('select');assert calls[-1][0]==8,'Task after images cannot be activated'
  assert http('/v3/notes/'+info['note'])['blocks'][4]['checked']
- for _ in range(40):click('up')
+ for _ in range(80):click('up')
  shot('document-long-return.png')
  print('PASS: large-font continuous text, automatic wide/tall images, task after pictures, reverse scrolling',flush=True)
 def touch_link_checks():
@@ -328,7 +347,8 @@ def refresh_checks():
  print('PASS: append confirmation during reader loading is retained and refreshes the open note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_DOCUMENT_DRAWING'):document_drawing_checks()
+ if os.environ.get('WATCH_TEST_LONG_LOG'):long_log_checks()
+ elif os.environ.get('WATCH_TEST_DOCUMENT_DRAWING'):document_drawing_checks()
  elif os.environ.get('WATCH_TEST_DOCUMENT_MEDIA'):document_media_checks()
  elif os.environ.get('WATCH_TEST_DOCUMENT_ONLY'):document_checks()
  elif os.environ.get('WATCH_TEST_TOUCH_ONLY'):touch_link_checks()

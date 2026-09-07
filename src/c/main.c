@@ -11,18 +11,20 @@
 #endif
 typedef struct { char id[65]; char title[112]; char location[96]; bool folder,pinned; } Note;
 static Window *s_main, *s_reader, *s_actions;
-static MenuLayer *s_action_menu,*s_rich_menu;
+static MenuLayer *s_action_menu;
+static ScrollLayer *s_document_scroll;
+static Layer *s_document_view,*s_document_cells[15];
 typedef struct {char text[241],id[65];uint8_t kind,format;bool checked;uint16_t text_height;} RichItem;
 static RichItem s_rich_items[15];
-static int s_rich_active=-1;
+static int s_rich_active=-1;static bool s_rich_animate;
 static bool s_rich,s_image_loading;static int s_rich_count,s_rich_expected,s_rich_offset,s_rich_total,s_rich_restore,s_rich_scroll;
 typedef struct {char id[65];int page,row,scroll;} NoteTrail;
 static NoteTrail s_note_trail[12];static int s_note_depth,s_link_scroll=-1;
 static char s_link_target[65];static bool s_link_back;
 static char s_revision[65],s_task_id[24];static bool s_task_checked;
 static GBitmap *s_image;static int s_image_index=-1,s_image_bytes,s_image_received,s_image_pixel;
-static char s_image_error[96];
-static void rich_move(bool down);static void rich_select(void);static void rich_selection(MenuLayer *menu,MenuIndex next,MenuIndex previous,void *context);
+static char s_image_error[96];static int s_image_source_width,s_image_source_height;
+static void rich_move(bool down);static void rich_select(void);
 static void image_clear(void);
 static void markdown_reset_metrics(void);
 static bool s_scroll_to_end;
@@ -135,7 +137,7 @@ static void clear_timeout(void) { if (s_timeout) { app_timer_cancel(s_timeout); 
 static void cancel_link(void){if(s_link_target[0]){s_link_target[0]=0;if(s_link_back)s_note_depth++;else if(s_note_depth)s_note_depth--;s_link_back=false;}}
 static void timed_out(void *unused) {
   cancel_link();
-  stop_stitch();s_timeout = NULL; s_loading = false;s_scroll_to_end=false;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}snprintf(s_image_error,sizeof(s_image_error),"No image reply · scroll away and back");if(s_rich_menu)layer_mark_dirty(menu_layer_get_layer(s_rich_menu));}
+  stop_stitch();s_timeout = NULL; s_loading = false;s_scroll_to_end=false;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}snprintf(s_image_error,sizeof(s_image_error),"No image reply · scroll away and back");if(s_document_view)layer_mark_dirty(s_document_view);}
   if(s_page_label)text_layer_set_text(s_page_label,"No reply · scroll to retry");
   set_status(s_pending ? "Draft kept · select to retry" : "No reply · double Back for actions");
 }
@@ -522,14 +524,13 @@ static void open_actions(ClickRecognizerRef recognizer,void *context){
 }
 static void show_capture_choices(void){open_actions(NULL,NULL);s_capture_choices=true;if(s_action_menu){menu_layer_reload_data(s_action_menu);actions_top();}}
 static void image_clear(void){if(s_image){gbitmap_destroy(s_image);s_image=NULL;}s_image_loading=false;s_image_index=-1;s_image_error[0]=0;}
-static uint16_t rich_rows(MenuLayer *menu,uint16_t section,void *context){return s_rich_count?s_rich_count:1;}
 #include "markdown.h"
-static int rich_text_height(MenuLayer *menu,RichItem *item){
+static int rich_text_height(Layer *menu,RichItem *item){
   if(item->text_height)return item->text_height;
-  int width=layer_get_bounds(menu_layer_get_layer(menu)).size.w-12;
+  int width=layer_get_bounds(menu).size.w-12;
   item->text_height=markdown_layout(NULL,item,width,0);return item->text_height;
 }
-static int16_t rich_height(MenuLayer *menu,MenuIndex *index,void *context){
+static int16_t rich_height(Layer *menu,MenuIndex *index,void *context){
   if(index->row>=s_rich_count){return 64;}RichItem *item=&s_rich_items[index->row];
   if(item->kind==1||item->kind==3||item->kind==4)return s_theme_size+40;
   // Keep geometry stable while a preview loads, fails, or is evicted for another image.
@@ -538,7 +539,7 @@ static int16_t rich_height(MenuLayer *menu,MenuIndex *index,void *context){
 }
 static void rich_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *context){
   GRect bounds=layer_get_bounds(cell);bool selected=index->row==s_rich_active;
-  if(selected){graphics_context_set_fill_color(ctx,s_highlight);graphics_fill_rect(ctx,bounds,0,GCornerNone);}
+  graphics_context_set_fill_color(ctx,selected?s_highlight:s_background);graphics_fill_rect(ctx,bounds,0,GCornerNone);
   graphics_context_set_text_color(ctx,selected?s_selection_text:s_foreground);
   if(index->row>=s_rich_count){graphics_draw_text(ctx,"Loading note…",theme_title_font(),bounds,GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);return;}
   RichItem *item=&s_rich_items[index->row];
@@ -557,17 +558,16 @@ static void rich_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *con
     graphics_draw_text(ctx,item->kind==3?"Open linked note >":"Link unavailable",fonts_get_system_font(FONT_KEY_GOTHIC_14),GRect(6,s_theme_size+10,bounds.size.w-12,22),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
   }else {graphics_context_set_stroke_color(ctx,selected?s_selection_text:s_foreground);markdown_layout(ctx,item,bounds.size.w-12,4);}
 }
-// MenuLayer supplies bounded block layout only. Scrolling is in document pixels;
-// text and pictures never become selectable menu items.
+// Each block owns a regular clipped Layer. No MenuLayer cursor/cache is involved.
 static bool rich_interactive(int row){return row>=0&&row<s_rich_count&&(s_rich_items[row].kind==1||s_rich_items[row].kind==3);}
-static int rich_document_height(void){int height=0;for(int i=0;i<s_rich_count;i++){MenuIndex index=MenuIndex(0,i);height+=rich_height(s_rich_menu,&index,NULL);}return height;}
-static int rich_scroll_max(void){int max=rich_document_height()-layer_get_bounds(menu_layer_get_layer(s_rich_menu)).size.h;return max>0?max:0;}
+static int rich_document_height(void){int height=0;for(int i=0;i<s_rich_count;i++){MenuIndex index=MenuIndex(0,i);height+=rich_height(s_document_view,&index,NULL);}return height;}
+static int rich_scroll_max(void){int max=rich_document_height()-layer_get_bounds(s_document_view).size.h;return max>0?max:0;}
 static void rich_visible(bool choose_link){
-  if(s_loading||!s_rich_menu)return;
-  int viewport=layer_get_bounds(menu_layer_get_layer(s_rich_menu)).size.h;
+  if(s_loading||!s_document_view)return;
+  int viewport=layer_get_bounds(s_document_view).size.h;
   int y=0,best=-1,distance=32767,image=-1,image_area=0;
   for(int row=0;row<s_rich_count;row++){
-    MenuIndex index=MenuIndex(0,row);int height=rich_height(s_rich_menu,&index,NULL),top=y-s_rich_scroll,bottom=top+height;
+    MenuIndex index=MenuIndex(0,row);int height=rich_height(s_document_view,&index,NULL),top=y-s_rich_scroll,bottom=top+height;
     if(top<viewport&&bottom>0){
       if(rich_interactive(row)&&top>=0&&bottom<=viewport){int d=top+height/2-viewport/2;if(d<0)d=-d;if(d<distance){best=row;distance=d;}}
       if(s_rich_items[row].kind==2){int area=(bottom<viewport?bottom:viewport)-(top>0?top:0);if(area>image_area){image=row;image_area=area;}}
@@ -583,21 +583,20 @@ static void rich_visible(bool choose_link){
 }
 static void rich_position(int position,bool choose_link){
   int max=rich_scroll_max();if(position<0)position=0;if(position>max)position=max;s_rich_scroll=position;
-  scroll_layer_set_content_offset(menu_layer_get_scroll_layer(s_rich_menu),GPoint(0,-position),false);
-  rich_visible(choose_link);layer_mark_dirty(menu_layer_get_layer(s_rich_menu));
+  scroll_layer_set_content_offset(s_document_scroll,GPoint(0,-position),s_rich_animate);
+  rich_visible(choose_link);layer_mark_dirty(s_document_view);
 }
-static void rich_selection(MenuLayer *menu,MenuIndex next,MenuIndex previous,void *context){}
 static void rich_scroll_by(int delta){
-  if(s_loading||!s_rich_menu)return;
+  if(s_loading||!s_document_view)return;
   bool down=delta>0;int max=rich_scroll_max();
   if((down&&s_rich_scroll==max&&s_rich_offset+s_rich_count<s_rich_total)||(!down&&s_rich_scroll==0&&s_rich_offset>0)){
     s_rich_restore=down?0:14;s_rich_active=-1;s_loading=true;image_clear();send_command(2,s_current_id,s_rich_offset/15+(down?1:-1),NULL);return;
   }
   rich_position(s_rich_scroll+delta,true);
 }
-static void rich_move(bool down){rich_scroll_by(down?s_theme_size+10:-s_theme_size-10);}
+static void rich_move(bool down){s_rich_animate=true;rich_scroll_by(down?(s_theme_size/2+5):-(s_theme_size/2+5));s_rich_animate=false;}
 static void rich_select(void){
-  if(s_loading||!s_rich_menu){return;}int row=s_rich_active;if(!rich_interactive(row)){open_actions(NULL,NULL);return;}RichItem *item=&s_rich_items[row];
+  if(s_loading||!s_document_view){return;}int row=s_rich_active;if(!rich_interactive(row)){open_actions(NULL,NULL);return;}RichItem *item=&s_rich_items[row];
   if(item->kind==4){set_status(item->text);return;}
   if(item->kind==3){
     if(s_note_depth>=12){set_status("Back through links before opening more");return;}
@@ -609,38 +608,44 @@ static void rich_select(void){
   char operation[96];snprintf(operation,sizeof(operation),"task-%lu-%lu",(unsigned long)time(NULL),(unsigned long)rand());
   s_loading=true;set_status("Saving task…");send_command(8,s_current_id,0,operation);
 }
-static void notesy_rich_selected(MenuLayer *menu,MenuIndex *index,void *context){
-  if(s_loading||s_stitch||menu!=s_rich_menu||index->section||index->row>=s_rich_count)return;
+#if defined(PBL_TOUCH)
+static void notesy_rich_selected(Layer *menu,MenuIndex *index,void *context){
+  if(s_loading||s_stitch||menu!=s_document_view||index->section||index->row>=s_rich_count)return;
   if(!rich_interactive(index->row))return;
   s_rich_active=index->row;rich_select();
 }
-#if defined(PBL_TOUCH)
 static void notesy_reader_tap_at(GPoint point){
   if(!touch_service_is_enabled()||s_loading||s_stitch)return;
   if(!s_rich)return;
-  if(!s_rich_menu)return;
-  GPoint origin=layer_convert_point_to_screen(menu_layer_get_layer(s_rich_menu),GPointZero);
-  GRect bounds=layer_get_bounds(menu_layer_get_layer(s_rich_menu));
+  if(!s_document_view)return;
+  GPoint origin=layer_convert_point_to_screen(s_document_view,GPointZero);
+  GRect bounds=layer_get_bounds(s_document_view);
   if(point.x<origin.x||point.x>=origin.x+bounds.size.w||point.y<origin.y||point.y>=origin.y+bounds.size.h)return;
-  int y=point.y-origin.y-scroll_layer_get_content_offset(menu_layer_get_scroll_layer(s_rich_menu)).y;
+  int y=point.y-origin.y-scroll_layer_get_content_offset(s_document_scroll).y;
   for(int row=0;row<s_rich_count;row++){
-    MenuIndex index=MenuIndex(0,row);int height=rich_height(s_rich_menu,&index,NULL);
+    MenuIndex index=MenuIndex(0,row);int height=rich_height(s_document_view,&index,NULL);
     if(y>=0&&y<height){
       if(!rich_interactive(row))return;
-      if(s_rich_active!=row){s_rich_active=row;layer_mark_dirty(menu_layer_get_layer(s_rich_menu));}
-      else notesy_rich_selected(s_rich_menu,&index,NULL);
+      if(s_rich_active!=row){s_rich_active=row;layer_mark_dirty(s_document_view);}
+      else notesy_rich_selected(s_document_view,&index,NULL);
       return;
     }
     y-=height;
   }
 }
-static bool s_reader_touch_tracking;static GPoint s_reader_touch_start;static int s_reader_touch_max;
+static bool s_reader_touch_tracking,s_reader_touch_vertical;static GPoint s_reader_touch_start;static int s_reader_touch_max,s_reader_touch_last_y;
 static void notesy_reader_touch(const TouchEvent *event,void *context){
   if(event->non_navigational||window_stack_get_top_window()!=s_reader||s_loading||s_stitch){s_reader_touch_tracking=false;return;}
-  if(event->type==TouchEvent_Touchdown){s_reader_touch_tracking=true;s_reader_touch_start=GPoint(event->x,event->y);s_reader_touch_max=0;return;}
+  if(event->type==TouchEvent_Touchdown){s_reader_touch_tracking=true;s_reader_touch_start=GPoint(event->x,event->y);s_reader_touch_max=0;s_reader_touch_vertical=false;s_reader_touch_last_y=event->y;return;}
   if(!s_reader_touch_tracking)return;
   int dx=event->x-s_reader_touch_start.x,dy=event->y-s_reader_touch_start.y;
   int ax=dx<0?-dx:dx,ay=dy<0?-dy:dy,delta=ax>ay?ax:ay;if(delta>s_reader_touch_max)s_reader_touch_max=delta;
+  if(s_rich&&(s_reader_touch_vertical||(ay>=10&&ay>ax*2))){
+    s_reader_touch_vertical=true;int delta=s_reader_touch_last_y-event->y;s_reader_touch_last_y=event->y;
+    if(delta)rich_scroll_by(delta);
+    if(event->type==TouchEvent_Liftoff)s_reader_touch_tracking=false;
+    return;
+  }
   if(event->type!=TouchEvent_Liftoff)return;
   s_reader_touch_tracking=false;
   // Touch events carry no timestamps. Rendering can delay their delivery, so
@@ -652,13 +657,32 @@ static void notesy_reader_touch(const TouchEvent *event,void *context){
 }
 
 #endif
+static void document_cell_draw(Layer *cell,GContext *ctx){
+  int row=*(uint8_t*)layer_get_data(cell);MenuIndex index=MenuIndex(0,row);rich_draw(ctx,cell,&index,NULL);
+}
+static void document_reload(void){
+  int y=0,width=layer_get_bounds(s_document_view).size.w;
+  for(int row=0;row<15;row++){
+    Layer *cell=s_document_cells[row];layer_set_hidden(cell,row>=s_rich_count);
+    if(row<s_rich_count){MenuIndex index=MenuIndex(0,row);int height=rich_height(s_document_view,&index,NULL);layer_set_frame(cell,GRect(0,y,width,height));layer_set_bounds(cell,GRect(0,0,width,height));y+=height;}
+  }
+  scroll_layer_set_content_size(s_document_scroll,GSize(width,y));
+}
+static void document_destroy(void){
+  for(int row=0;row<15;row++){if(s_document_cells[row])layer_destroy(s_document_cells[row]);s_document_cells[row]=NULL;}
+  if(s_document_scroll){scroll_layer_destroy(s_document_scroll);}s_document_scroll=NULL;s_document_view=NULL;
+}
 static void rich_enable(void){
   s_rich=true;image_clear();layer_set_hidden(text_layer_get_layer(s_heading),true);layer_set_hidden(scroll_layer_get_layer(s_scroll),true);
-  if(!s_rich_menu){GRect bounds=layer_get_bounds(window_get_root_layer(s_reader));s_rich_menu=menu_layer_create(GRect(0,0,bounds.size.w,bounds.size.h-20));menu_layer_set_callbacks(s_rich_menu,NULL,(MenuLayerCallbacks){.get_num_rows=rich_rows,.get_cell_height=rich_height,.draw_row=rich_draw,.select_click=notesy_rich_selected,.selection_changed=rich_selection});layer_add_child(window_get_root_layer(s_reader),menu_layer_get_layer(s_rich_menu));}
-  menu_layer_set_normal_colors(s_rich_menu,s_background,s_foreground);menu_layer_set_highlight_colors(s_rich_menu,s_background,s_foreground);window_set_click_config_provider(s_reader,reader_clicks);
+  if(!s_document_view){
+    GRect bounds=layer_get_bounds(window_get_root_layer(s_reader));s_document_scroll=scroll_layer_create(GRect(0,0,bounds.size.w,bounds.size.h-20));s_document_view=scroll_layer_get_layer(s_document_scroll);
+    layer_add_child(window_get_root_layer(s_reader),s_document_view);
+    for(int row=0;row<15;row++){Layer *cell=layer_create_with_data(GRect(0,0,bounds.size.w,1),sizeof(uint8_t));s_document_cells[row]=cell;*(uint8_t*)layer_get_data(cell)=row;layer_set_update_proc(cell,document_cell_draw);scroll_layer_add_child(s_document_scroll,cell);}
+  }
+  window_set_background_color(s_reader,s_background);window_set_click_config_provider(s_reader,reader_clicks);
 }
 static void reader_unload(Window *window) {
-  s_note_depth=0;s_link_scroll=-1;s_link_target[0]=0;s_loading=false; ++s_request; clear_timeout();image_clear();marquee_stop();s_rich=false;s_rich_count=0;s_rich_restore=0;if(s_rich_menu){menu_layer_destroy(s_rich_menu);s_rich_menu=NULL;}
+  s_note_depth=0;s_link_scroll=-1;s_link_target[0]=0;s_loading=false; ++s_request; clear_timeout();image_clear();marquee_stop();s_rich=false;s_rich_count=0;s_rich_restore=0;document_destroy();
   text_layer_destroy(s_body); text_layer_destroy(s_heading); text_layer_destroy(s_page_label); scroll_layer_destroy(s_scroll);
   if(s_italic_font){fonts_unload_custom_font(s_italic_font);s_italic_font=NULL;}markdown_reset_metrics();
   s_body=NULL; s_heading=NULL; s_page_label=NULL; s_scroll=NULL;
@@ -813,26 +837,35 @@ static void inbox(DictionaryIterator *iter, void *context) {
     Tuple *index=dict_find(iter,MESSAGE_KEY_INDEX),*item=dict_find(iter,MESSAGE_KEY_ITEM_ID),*entry=dict_find(iter,MESSAGE_KEY_ENTRY_KIND),*checked=dict_find(iter,MESSAGE_KEY_CHECKED),*format=dict_find(iter,MESSAGE_KEY_FORMAT);int i=index?index->value->int32:-1;
     if(i>=0&&i<s_rich_expected&&text){snprintf(s_rich_items[i].text,sizeof(s_rich_items[i].text),"%s",text->value->cstring);if(item)snprintf(s_rich_items[i].id,sizeof(s_rich_items[i].id),"%s",item->value->cstring);s_rich_items[i].format=format?format->value->int32:0;s_rich_items[i].kind=entry?entry->value->int32:0;s_rich_items[i].checked=checked&&checked->value->int32;}
   } else if(kind==14&&s_rich){
-    clear_timeout();s_loading=false;for(int i=0;i<s_rich_expected;i++){if(!s_rich_items[i].id[0]){set_status("Note interrupted · refresh to retry");return;}}s_rich_count=s_rich_expected;marquee_reset();menu_layer_reload_data(s_rich_menu);
+    clear_timeout();s_loading=false;for(int i=0;i<s_rich_expected;i++){if(!s_rich_items[i].id[0]){set_status("Note interrupted · refresh to retry");return;}}s_rich_count=s_rich_expected;marquee_reset();document_reload();
     bool returning=s_link_scroll>=0;int position=returning?s_link_scroll:(s_rich_restore?rich_scroll_max():0);s_rich_active=returning&&rich_interactive(s_rich_restore)?s_rich_restore:-1;s_rich_restore=0;s_link_scroll=-1;rich_position(position,false);text_layer_set_text(s_page_label,"Double Back: actions");
   } else if(kind==15&&s_rich){
     clear_timeout();s_loading=false;Tuple *item=dict_find(iter,MESSAGE_KEY_ITEM_ID),*checked=dict_find(iter,MESSAGE_KEY_CHECKED),*revision=dict_find(iter,MESSAGE_KEY_REVISION);
     if(item)for(int i=0;i<s_rich_count;i++)if(strcmp(s_rich_items[i].id,item->value->cstring)==0)s_rich_items[i].checked=checked&&checked->value->int32;
-    if(revision){snprintf(s_revision,sizeof(s_revision),"%s",revision->value->cstring);}s_snapshot[0]=0;s_before_search.snapshot[0]=0;set_status("Task saved");layer_mark_dirty(menu_layer_get_layer(s_rich_menu));
+    if(revision){snprintf(s_revision,sizeof(s_revision),"%s",revision->value->cstring);}s_snapshot[0]=0;s_before_search.snapshot[0]=0;set_status("Task saved");layer_mark_dirty(s_document_view);
   } else if(kind==16&&s_rich&&s_image_loading){
     Tuple *width=dict_find(iter,MESSAGE_KEY_WIDTH),*height=dict_find(iter,MESSAGE_KEY_HEIGHT),*total=dict_find(iter,MESSAGE_KEY_TOTAL);int w=width?width->value->int32:0,h=height?height->value->int32:0;
-    if(w<1||w>IMAGE_WIDTH||h<1||h>IMAGE_HEIGHT){image_clear();set_status("Invalid image size");return;}s_image=gbitmap_create_blank(GSize(w,h),GBitmapFormat8Bit);s_image_received=0;s_image_pixel=0;s_image_bytes=total?total->value->int32:0;
+    if(w<1||w>IMAGE_WIDTH||h<1||h>IMAGE_HEIGHT){image_clear();set_status("Invalid image size");return;}s_image_source_width=w;s_image_source_height=h;
+#if !defined(PBL_PLATFORM_EMERY)
+    // Downsample during RLE decoding to leave room for document layers on 64 KB watches.
+    if(w>104){w=104;}if(h>80){h=80;}
+#endif
+    s_image=gbitmap_create_blank(GSize(w,h),GBitmapFormat8Bit);
+#if !defined(PBL_PLATFORM_EMERY)
+    while(!s_image&&w>32&&h>24){w=w*3/4;h=h*3/4;s_image=gbitmap_create_blank(GSize(w,h),GBitmapFormat8Bit);}
+#endif
+    s_image_received=0;s_image_pixel=0;s_image_bytes=total?total->value->int32:0;
     if(!s_image){s_image_loading=false;snprintf(s_image_error,sizeof(s_image_error),"Not enough watch memory for this image");}
   } else if(kind==17&&s_rich&&s_image_loading&&s_image){
     Tuple *bytes=dict_find(iter,MESSAGE_KEY_PIXELS),*offset=dict_find(iter,MESSAGE_KEY_INDEX);if(!bytes||!offset||offset->value->int32!=s_image_received||bytes->length%2){image_clear();set_status("Image interrupted · scroll away and back");return;}
     GRect size=gbitmap_get_bounds(s_image);uint8_t *dest=gbitmap_get_data(s_image);int stride=gbitmap_get_bytes_per_row(s_image);
-    const uint8_t *source=(const uint8_t *)bytes->value;for(int i=0;i<bytes->length;i+=2){int run=source[i];uint8_t color=source[i+1];if(!run||s_image_pixel+run>size.size.w*size.size.h){image_clear();set_status("Invalid image data");return;}for(int j=0;j<run;j++){dest[(s_image_pixel/size.size.w)*stride+s_image_pixel%size.size.w]=color;s_image_pixel++;}}
+    const uint8_t *source=(const uint8_t *)bytes->value;for(int i=0;i<bytes->length;i+=2){int run=source[i];uint8_t color=source[i+1];if(!run||s_image_pixel+run>s_image_source_width*s_image_source_height){image_clear();set_status("Invalid image data");return;}for(int j=0;j<run;j++){int x=(s_image_pixel%s_image_source_width)*size.size.w/s_image_source_width,y=(s_image_pixel/s_image_source_width)*size.size.h/s_image_source_height;dest[y*stride+x]=color;s_image_pixel++;}}
     s_image_received+=bytes->length;clear_timeout();s_timeout=app_timer_register(18000,timed_out,NULL);
   } else if(kind==18&&s_rich&&s_image_loading&&s_image){
-    clear_timeout();GRect bounds=gbitmap_get_bounds(s_image);if(s_image_received!=s_image_bytes||s_image_pixel!=bounds.size.w*bounds.size.h){image_clear();set_status("Image interrupted · scroll away and back");return;}s_image_loading=false;text_layer_set_text(s_page_label,"Double Back: actions");layer_mark_dirty(menu_layer_get_layer(s_rich_menu));
+    clear_timeout();if(s_image_received!=s_image_bytes||s_image_pixel!=s_image_source_width*s_image_source_height){image_clear();set_status("Image interrupted · scroll away and back");return;}s_image_loading=false;text_layer_set_text(s_page_label,"Double Back: actions");layer_mark_dirty(s_document_view);
   } else if(kind==4&&s_body) {
     if(s_link_target[0]){snprintf(s_current_id,sizeof(s_current_id),"%s",s_link_target);s_link_target[0]=0;s_link_back=false;}
-    if(s_rich){s_rich=false;image_clear();if(s_rich_menu){menu_layer_destroy(s_rich_menu);s_rich_menu=NULL;}layer_set_hidden(text_layer_get_layer(s_heading),false);layer_set_hidden(scroll_layer_get_layer(s_scroll),false);}
+    if(s_rich){s_rich=false;image_clear();document_destroy();layer_set_hidden(text_layer_get_layer(s_heading),false);layer_set_hidden(scroll_layer_get_layer(s_scroll),false);}
 
     clear_timeout();s_loading=false;Tuple *page=dict_find(iter,MESSAGE_KEY_PAGE),*count=dict_find(iter,MESSAGE_KEY_COUNT);
     s_page=page?page->value->int32:0;s_pages=count?count->value->int32:1;
@@ -884,7 +917,7 @@ static void inbox(DictionaryIterator *iter, void *context) {
     if(kind==7&&!s_count&&!s_body&&!s_loading)refresh_list();
   } else if(kind==5||kind==9) {
     stop_stitch();
-    if(kind==9){cancel_link();clear_timeout();s_loading=false;s_snapshot[0]=0;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}if(text)snprintf(s_image_error,sizeof(s_image_error),"%s",text->value->cstring);if(s_rich_menu)layer_mark_dirty(menu_layer_get_layer(s_rich_menu));}}
+    if(kind==9){cancel_link();clear_timeout();s_loading=false;s_snapshot[0]=0;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}if(text)snprintf(s_image_error,sizeof(s_image_error),"%s",text->value->cstring);if(s_document_view)layer_mark_dirty(s_document_view);}}
     if(text)set_status(text->value->cstring);
     if(kind==9&&s_body){s_scroll_to_end=false;text_layer_set_text(s_page_label,s_status);}
   }

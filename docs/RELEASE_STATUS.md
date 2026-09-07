@@ -26,3 +26,7 @@ Rightward swipe Back in the note reader and top-aligned Actions/dictation/sort m
 ## Unpublished 1.4.0 candidate
 
 The reader now scrolls as a document: ordinary text and previews are not selectable, images load automatically, and links/tasks retain controls. Built and emulator-tested; current installed gateway is compatible. See [document reader validation and exact package hash](DOCUMENT_READER_VALIDATION.md). Physical installation and reading acceptance remain pending.
+
+## Unpublished 1.4.1 candidate
+
+Fixes blank long-note screens by replacing menu rendering with ordinary document layers; adds smaller animated button steps and finger-tracked scrolling. Includes adaptive preview memory use on Basalt. Current Connector remains compatible. See [validation and exact package hash](LONG_NOTE_SCROLL_VALIDATION.md). Physical-watch acceptance remains pending.

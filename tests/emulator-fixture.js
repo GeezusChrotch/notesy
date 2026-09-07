@@ -20,6 +20,10 @@ if(process.env.WATCH_TEST_LINKS_ONLY){
  fs.writeFileSync(path.join(vault,'Projects','Project plan.md'),'# Formatted note\n\nNormal **bold** and *italic* with [[Linked|Open friend]].\n\n> A short quote\n\n3. Numbered item\n\n- [ ] A task');
  fs.writeFileSync(path.join(vault,'Projects','Linked.md'),'A linked note opened in Notesy.');
 }
+if(process.env.WATCH_TEST_LONG_LOG){
+ const entry=i=>`### Entry ${i} at 8:30 AM\n\n| Category | Detail | Severity |\n|---|---|---|\n| General | A routine observation with several words | Normal |\n\n**Notes**\n\nA longer entry containing ordinary text and punctuation. It should stay visible through every scroll position. ${'Additional observations fill this paragraph. '.repeat(3)}\n\n---\n\n`;
+ fs.writeFileSync(path.join(vault,'Projects','Project plan.md'),'# Long log\n\n'+Array.from({length:18},(_,i)=>entry(i+1)).join(''));
+}
 const {server,browser}=makeServer({vault,state:path.join(root,'state'),token:'fixture-token-'.repeat(4)});
 const projects=browser.list().items.find(n=>n.title==='Projects');const projectNote=browser.list(projects.id).items.find(n=>n.title==='Project plan');browser.pin(projectNote.id,true);
 server.listen(0,'127.0.0.1',()=>process.stdout.write(JSON.stringify({port:server.address().port,vaultId:browser.vaultId,root:browser.root,projects:projects.id,note:projectNote.id})+'\n'));

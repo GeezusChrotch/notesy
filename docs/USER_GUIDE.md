@@ -43,14 +43,14 @@ Dictate. The New note row shows the two choices before recording.
 
 ## Read, check and view
 
-Notes scroll as documents. Text, images and drawings move together without becoming selected. Up/Down moves a small reading step; a vertical swipe moves through the text. Only visible links and task checkboxes receive focus for activation with Select.
+Notes scroll as documents. Text, images and drawings move together without becoming selected. Up/Down moves a small animated reading step; vertical dragging moves the text with your finger. Only visible links and task checkboxes receive focus for activation with Select.
 
 With Select set to **Normal navigation**, selecting a task checkbox checks or unchecks it in
 Obsidian. The watch shows the change after the Mac confirms it. If the note changed in Obsidian
 since you opened it, reopen it before toggling. Custom plugin task statuses and generated queries
 are not interactive.
 
-Images and drawings load automatically as they enter view. They do not need to be selected. If a preview fails, scroll it out of view and back to retry. The watch keeps one decoded preview at a time; adjacent previews may briefly reload as you scroll.
+Images and drawings load automatically as they enter view. They do not need to be selected. If a preview fails, scroll it out of view and back to retry. Smaller watches may reduce preview resolution to fit available memory. The watch keeps one decoded preview at a time; adjacent previews may briefly reload as you scroll.
 Images must be stored inside the vault. PNG, JPEG, GIF's first frame, WebP, HEIC, TIFF, BMP and
 SVG are supported. Pictures fit the watch's 64-color display; they do not support zoom or pan.
 Fine text or details in a large picture can be small.

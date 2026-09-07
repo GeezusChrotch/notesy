@@ -27,13 +27,14 @@ def test_spi(self):
  return path
 ManagedEmulatorTransport._get_spi_path=test_spi
 from pebble_tool import run_tool
-sys.argv=['pebble','install','build/Notesy-fixture.pbw','--emulator','emery']
+sys.argv=['pebble','install','build/Notesy-fixture.pbw','--emulator',os.environ.get('WATCH_TEST_PLATFORM','emery')]
 result=run_tool()
 if result:raise SystemExit(result)
 subprocess.Popen=original_spawn
 env=dict(os.environ,WATCH_TEST_LINKS_ONLY='1',WATCH_TEST_DOCUMENT_ONLY='1',NOTESY_QMP_PORT=str(port))
 if env.get('WATCH_TEST_DOCUMENT_MEDIA'):
  env.pop('WATCH_TEST_LINKS_ONLY',None);env['WATCH_TEST_SCROLL_ONLY']='1'
+if env.get('WATCH_TEST_LONG_LOG'):env.pop('WATCH_TEST_LINKS_ONLY',None)
 if env.get('WATCH_TEST_DOCUMENT_DRAWING'):
  env.pop('WATCH_TEST_LINKS_ONLY',None);env['WATCH_TEST_RICH_ONLY']='1'
 raise SystemExit(subprocess.call([sys.executable,'tests/watch-emulator.py'],env=env))

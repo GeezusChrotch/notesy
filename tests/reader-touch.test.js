@@ -9,7 +9,7 @@ typedef void Recognizer;typedef int RecognizerEvent;enum {RecognizerEvent_Comple
 typedef struct {int x,y;} GPoint;typedef struct {int w,h;} GSize;typedef struct {GPoint origin;GSize size;} GRect;typedef struct {int section,row;} MenuIndex;
 #define MenuIndex(s,r) ((MenuIndex){s,r})
 #define GPointZero ((GPoint){0,0})
-static bool s_loading,s_stitch,s_rich=true,enabled=true;static MenuLayer *s_rich_menu=(void*)1;static int s_rich_count=4,s_rich_active=-1,activated=-1,actions;static GPoint point,offset={0,-20};
+static bool s_loading,s_stitch,s_rich=true,enabled=true;static MenuLayer *s_document_view=(void*)1;static void *s_document_scroll=(void*)1;static int s_rich_count=4,s_rich_active=-1,activated=-1,actions;static GPoint point,offset={0,-20};
 static bool touch_service_is_enabled(void){return enabled;}
 static GPoint tap_recognizer_get_tap_point(const Recognizer*r){return point;}
 static void *menu_layer_get_layer(MenuLayer*m){return m;}
@@ -59,6 +59,7 @@ int main(void){
  event(TouchEvent_Touchdown,40,100);s_loading=true;event(TouchEvent_Liftoff,40,100);s_loading=false;assert(taps==1);
  event(TouchEvent_Touchdown,40,100);top=NULL;event(TouchEvent_Liftoff,40,100);top=s_reader;assert(taps==1);
  event(TouchEvent_Touchdown,40,100);TouchEvent ignored={TouchEvent_Liftoff,true,40,100};notesy_reader_touch(&ignored,NULL);assert(taps==1);
+ int prior=down;event(TouchEvent_Touchdown,40,150);event(TouchEvent_PositionUpdate,40,110);assert(down==prior+1);event(TouchEvent_Liftoff,40,110);assert(down==prior+1);
 }
 `);execFileSync('cc',[path.join(dir,'test.c'),'-o',path.join(dir,'test')]);execFileSync(path.join(dir,'test'));}finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
