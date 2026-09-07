@@ -37,3 +37,5 @@ explanation or keeps making things just because they wish those things existed.
 
 These are acknowledgments, not claims of affiliation or endorsement. Upstream software and
 artwork retain their own licenses; our MIT license does not replace their terms.
+
+Thanks also to **czmanix**, whose open-source Pebble color optimizer supplied the room-light palette samples used for our photo and drawing previews.

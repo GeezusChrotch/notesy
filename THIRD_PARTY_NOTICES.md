@@ -18,3 +18,7 @@ notices; `npm ci --prefix renderer` retrieves dependencies rather than shipping 
 
 Apple frameworks, the Pebble SDK, Obsidian and Tailscale are separately supplied products.
 Their names are used only to describe compatibility. No endorsement or affiliation is implied.
+
+## Pebble photo and drawing palette
+
+The shared Organik image quantizer uses room-light palette samples from [czmanix/pebble-color-optimizer](https://github.com/czmanix/pebble-color-optimizer), pinned at `d0609657e0a1d41241c84954855b19a7547ba9c6`, under the MIT license. Copyright (c) 2026 czmanix. The full notice is retained in `gateway/pebble-image.cjs`. These samples approximate one lighting condition, rather than a factory calibration.

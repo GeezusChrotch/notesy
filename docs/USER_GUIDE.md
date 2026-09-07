@@ -113,3 +113,13 @@ Creation dates use the filesystem creation time supplied by macOS, which can cha
 
 See [note links and Markdown](MARKDOWN_AND_LINKS.md) for selectable linked notes,
 Back navigation, formatting support and the matching-Connector requirement.
+
+## Photo and drawing display modes (next local build)
+
+In phone settings, open **Themes → Photos and drawings**:
+
+- **Natural** (default) balances photos for Pebble's limited colors and uses a clean-line treatment for Excalidraw and SVG drawings.
+- **High contrast** strengthens faint details.
+- **Original** uses the previous color conversion.
+
+Save and reopen a note to reload its previews with the selected mode. The conversion affects watch previews only; original vault attachments are unchanged. The matching Connector update is required for the new treatments.

@@ -24,7 +24,7 @@ test('capture is acknowledged after phone persistence and saved only after the M
 });
 test('settings shows connection progress, success and errors with browser window.status semantics',()=>{
  const p=phone();p.handlers.showConfiguration();const html=decodeURIComponent(p.urls[0].split(',').slice(1).join(','));
- const elements={};for(const id of ['sorting','note-sort','note-tag','sort-tags','load-sort-tags','sort-tag-status','folder-filter','folder-tree','folder-status','folders-load','folders-apply','marquee-speed','buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
+ const elements={};for(const id of ['image-mode','sorting','note-sort','note-tag','sort-tags','load-sort-tags','sort-tag-status','folder-filter','folder-tree','folder-status','folders-load','folders-apply','marquee-speed','buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
  for(let i=0;i<14;i++)elements['button-'+i]={value:String(require('../src/pkjs/buttons').normalize()[i])};
  let request;const context={document:{getElementById:id=>elements[id]},location:{href:''},XMLHttpRequest:function(){request=this;this.open=()=>{};this.setRequestHeader=()=>{};this.send=()=>{};}};
  let browserStatus='';Object.defineProperty(context,'status',{get:()=>browserStatus,set:v=>{browserStatus=String(v);},configurable:true});
@@ -34,8 +34,8 @@ test('settings shows connection progress, success and errors with browser window
  elements.pair.value=JSON.stringify(config);elements.test.onclick();assert.equal(elements.status.textContent,'Connecting…');
  request.status=200;request.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId});request.onload();assert.equal(elements.status.textContent,'Connected to your vault.');
  elements['appearance-preset'].value='2';elements['appearance-preset'].onchange();
- elements['marquee-speed'].value='60';elements.save.onclick();assert.match(context.location.href,/^pebblejs:\/\/close#/);
- const saved=JSON.parse(decodeURIComponent(context.location.href.split('#')[1]));assert.equal(saved.marqueeSpeed,60);assert.deepEqual(saved.buttons.slice(12),[5,5]);assert.equal(saved.appearance.background,'#000055');assert.equal(saved.appearance.font,'roboto-condensed');assert.equal(saved.gatewayToken,config.gatewayToken);
+ assert.equal(elements['image-mode'].value,'natural');elements['image-mode'].value='high-contrast';elements['marquee-speed'].value='60';elements.save.onclick();assert.match(context.location.href,/^pebblejs:\/\/close#/);
+ const saved=JSON.parse(decodeURIComponent(context.location.href.split('#')[1]));assert.equal(saved.imageMode,"high-contrast");assert.equal(saved.marqueeSpeed,60);assert.deepEqual(saved.buttons.slice(12),[5,5]);assert.equal(saved.appearance.background,'#000055');assert.equal(saved.appearance.font,'roboto-condensed');assert.equal(saved.gatewayToken,config.gatewayToken);
  elements.test.onclick();request.onerror();assert.match(elements.status.textContent,/Cannot reach/);
  elements.pair.value='invalid';elements.test.onclick();assert.ok(elements.status.textContent.length>0);assert.notEqual(elements.status.textContent,'Connecting…');
 });
@@ -122,4 +122,12 @@ test('web page titles are transported as plain reader text without an open-link 
  const p=phone(),c={...config,browserId:'b'.repeat(64),root:'c'.repeat(64)};p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify(c))});p.handlers.appmessage({payload:{COMMAND:2,API:3,REQUEST:20,NOTE_ID:'d'.repeat(64)}});
  p.requests[0].status=200;p.requests[0].responseText=JSON.stringify({rich:true,title:'Web notes',parent:c.root,revision:'e'.repeat(64),offset:0,total:1,blocks:[{kind:'web',id:'0',text:'Example Domain',ref:'https://example.com/'}]});p.requests[0].onload();
  const row=p.messages.find(m=>m.TYPE===13);assert.equal(row.TEXT,'Example Domain');assert.equal(row.ENTRY_KIND,0);assert.equal(row.ITEM_ID,'0');assert.ok(!JSON.stringify(row).includes('https://'));
+});
+
+test('image requests carry each display preference and safely default old or invalid settings',()=>{
+ for(const [value,expected] of [[undefined,'natural'],['invalid','natural'],['natural','natural'],['high-contrast','high-contrast'],['original','original']]){
+  const p=phone();p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,imageMode:value}))});
+  p.handlers.appmessage({payload:{COMMAND:9,REQUEST:1,NOTE_ID:'b'.repeat(64),INDEX:0,REVISION:'c'.repeat(64),WIDTH:120,HEIGHT:100}});
+  assert.ok(p.requests[0].url.endsWith('&mode='+expected));
+ }
 });
