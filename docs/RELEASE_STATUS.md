@@ -34,3 +34,11 @@ Fixes blank long-note screens by replacing menu rendering with ordinary document
 ## Unpublished 1.4.2 candidate
 
 Fixes unintended strikethrough caused by line-break/style collisions and adds text-only inline HTML formatting. Requires matching watch and Connector gateway updates. See [validation and exact package hash](HTML_FORMATTING_VALIDATION.md). Physical deployment and acceptance remain pending.
+
+## 1.4.3 candidate — configurable Double Back
+
+Removes the persistent reader gesture hint and restores the full note viewport. Save/error feedback is a four-second overlay. Settings document Double Back and expose separate main/folder and note shortcuts, both defaulting to Actions. Existing twelve-button settings migrate without changing their shortcuts; single Back and fixed Up/Down navigation remain available.
+
+Validation: 82 tests passed during packaging, plus the added native status-overlay lifecycle test passed separately (83 total cases). Basalt and Emery builds passed. The native shortcut test covers both view bindings, all action mappings, and stopping an active Stitch. Settings tests cover migration, independent shortcuts, and the serialized settings page save. This candidate has not been installed, physically watch-tested, or published.
+
+Artifact: `dist/Notesy-1.4.3.pbw`, SHA-256 `0ab05cafb8f3333dc9727094ee61e60c4702ed583717064d43cc99d86061f32f`. Includes the prior 1.4.2 formatting fixes, which still require the matching Connector gateway candidate.

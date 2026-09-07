@@ -25,7 +25,7 @@ test('capture is acknowledged after phone persistence and saved only after the M
 test('settings shows connection progress, success and errors with browser window.status semantics',()=>{
  const p=phone();p.handlers.showConfiguration();const html=decodeURIComponent(p.urls[0].split(',').slice(1).join(','));
  const elements={};for(const id of ['sorting','note-sort','note-tag','sort-tags','load-sort-tags','sort-tag-status','folder-filter','folder-tree','folder-status','folders-load','folders-apply','marquee-speed','buttons','pair','status','theme','auto','test','save','pending','appearance-preset','appearance-font','appearance-size','appearance-background','appearance-text','appearance-selection'])elements[id]={value:'',textContent:''};
- for(let i=0;i<12;i++)elements['button-'+i]={value:String(require('../src/pkjs/buttons').normalize()[i])};
+ for(let i=0;i<14;i++)elements['button-'+i]={value:String(require('../src/pkjs/buttons').normalize()[i])};
  let request;const context={document:{getElementById:id=>elements[id]},location:{href:''},XMLHttpRequest:function(){request=this;this.open=()=>{};this.setRequestHeader=()=>{};this.send=()=>{};}};
  let browserStatus='';Object.defineProperty(context,'status',{get:()=>browserStatus,set:v=>{browserStatus=String(v);},configurable:true});
  // The full shared UI is exercised by the coordinator's real-browser checks.
@@ -35,7 +35,7 @@ test('settings shows connection progress, success and errors with browser window
  request.status=200;request.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId});request.onload();assert.equal(elements.status.textContent,'Connected to your vault.');
  elements['appearance-preset'].value='2';elements['appearance-preset'].onchange();
  elements['marquee-speed'].value='60';elements.save.onclick();assert.match(context.location.href,/^pebblejs:\/\/close#/);
- const saved=JSON.parse(decodeURIComponent(context.location.href.split('#')[1]));assert.equal(saved.marqueeSpeed,60);assert.equal(saved.appearance.background,'#000055');assert.equal(saved.appearance.font,'roboto-condensed');assert.equal(saved.gatewayToken,config.gatewayToken);
+ const saved=JSON.parse(decodeURIComponent(context.location.href.split('#')[1]));assert.equal(saved.marqueeSpeed,60);assert.deepEqual(saved.buttons.slice(12),[5,5]);assert.equal(saved.appearance.background,'#000055');assert.equal(saved.appearance.font,'roboto-condensed');assert.equal(saved.gatewayToken,config.gatewayToken);
  elements.test.onclick();request.onerror();assert.match(elements.status.textContent,/Cannot reach/);
  elements.pair.value='invalid';elements.test.onclick();assert.ok(elements.status.textContent.length>0);assert.notEqual(elements.status.textContent,'Connecting…');
 });
@@ -59,7 +59,7 @@ test('browser lists carry folder types, pins, page positions and stale replies a
 test('phone learns browser identity from existing pairing and sends all twelve button bindings',()=>{
  const p=phone();p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,buttons:[3,2,1,4,5,6,7,0,0,2,4,5]}))});p.handlers.ready();
  const req=p.requests[0];req.status=200;req.responseText=JSON.stringify({service:'StoneNotes',vaultId:config.vaultId,browserId:'b'.repeat(64),root:'c'.repeat(64)});req.onload();
- const settings=p.messages.filter(m=>m.TYPE===6).at(-1);assert.equal(settings.API,2);assert.equal(settings.BUTTONS,'0,2,0,4,5,6,0,0,0,2,4,5');assert.equal(settings.FOLDER_ID,'c'.repeat(64));
+ const settings=p.messages.filter(m=>m.TYPE===6).at(-1);assert.equal(settings.API,2);assert.equal(settings.BUTTONS,'0,2,0,4,5,6,0,0,0,2,4,5,5,5');assert.equal(settings.FOLDER_ID,'c'.repeat(64));
  p.handlers.appmessage({payload:{COMMAND:3,API:2,NOTE_ID:'v2_phone_draft',TEXT:'Here',FOLDER_ID:'d'.repeat(64),VAULT_ID:'b'.repeat(64)}});
  assert.match(p.requests[1].url,/v2\/notes$/);assert.equal(JSON.parse(p.requests[1].body).folderId,'d'.repeat(64));
 });
@@ -94,7 +94,7 @@ test('converted image transport sends bounded byte chunks and ignores superseded
 test('Stitch receives the saved destination and both Stitch shortcuts survive settings',()=>{
  const p=phone(),target='e'.repeat(64),buttons=[0,9,0,4,5,1,0,10,0,4,2,6];
  p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify({...config,buttons}))});
- assert.equal(p.messages.filter(m=>m.TYPE===6).at(-1).BUTTONS,buttons.join(','));
+ assert.equal(p.messages.filter(m=>m.TYPE===6).at(-1).BUTTONS,buttons.concat([5,5]).join(','));
  p.handlers.appmessage({payload:{COMMAND:3,NOTE_ID:'stitch_phone_first',TEXT:'First section'}});
  assert.equal(p.messages.find(m=>m.TYPE===7).TARGET_ID,'');
  const req=p.requests[0];req.status=200;req.responseText=JSON.stringify({saved:true,id:target});req.onload();

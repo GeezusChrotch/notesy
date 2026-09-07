@@ -12,7 +12,7 @@ selected or open note. New note, when assigned in note view, creates a separate 
 it. Drawing source cannot be appended to; create a note alongside a drawing instead.
 
 By default, long-press Select opens Actions in the browser and appends while reading. Double-press
-Back always opens Actions. The watch OS reserves long-press Back to exit the app.
+Back opens Actions by default. Customize Double Back separately for main/folder and note views in settings. The watch OS reserves long-press Back to exit the app.
 
 New files lead with the local date and readable time, followed by the first sentence. Existing
 filenames are preserved. Retry receipts prevent a delayed connection from saving the same capture twice.
@@ -82,7 +82,7 @@ watch. **Long menu titles** controls marquee speed from Off through Very fast.
 Single presses on Up and Down always navigate lists or scroll notes. Customize Select press and
 long presses for Up, Select and Down separately in browser and note views.
 Options include navigation, actions, Quick Dictate or Stitch for create/append, delete, pin, refresh and dictated search.
-Double-press Back to open Actions, even if Select has a custom shortcut.
+Double-press Back to open Actions by default, even if Select has a custom shortcut. You can assign a different Double Back action in settings.
 
 ## When the Mac is unavailable
 
@@ -95,7 +95,7 @@ For precise storage, size and paging limits, see [README](../README.md#limits).
 
 ## Touch controls
 
-On a touch-capable watch with touch enabled, tap a different folder, note, task or action row to highlight it first. Its title can scroll while you read. Tap the highlighted row again to open or activate it (including toggling a task checkbox); no quick double-tap is required. Tapping note text or an image does nothing. Double-press Back for Actions. Swipe right in a note to return, and swipe vertically to scroll; physical buttons continue to work. Taps use these standard actions regardless of custom Select shortcuts.
+On a touch-capable watch with touch enabled, tap a different folder, note, task or action row to highlight it first. Its title can scroll while you read. Tap the highlighted row again to open or activate it (including toggling a task checkbox); no quick double-tap is required. Tapping note text or an image does nothing. Double-press Back for Actions by default (configurable in settings). Swipe right in a note to return, and swipe vertically to scroll; physical buttons continue to work. Taps use these standard actions regardless of custom Select shortcuts.
 
 ## Browsing, sorting and returning to the top (1.2.0)
 

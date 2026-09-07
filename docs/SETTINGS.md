@@ -2,7 +2,7 @@
 
 The settings page follows the shared Organik layout based on Pome: **Setup, Themes, Shortcuts, Vault**.
 
-Setup retains pairing and connection testing. Shortcuts includes Quick Dictate, Stitch, auto-dictation, and configurable watch buttons. Vault shows hidden-folder selection and pending phone captures directly, with no expandable sections. Shortcuts also shows its controls directly. Single Up/Down presses always navigate or scroll; only Select press and the three long presses are customizable in each view. Double-press Back always opens Actions.
+Setup retains pairing and connection testing. Shortcuts includes Quick Dictate, Stitch, auto-dictation, and configurable watch buttons. Vault shows hidden-folder selection and pending phone captures directly, with no expandable sections. Shortcuts also shows its controls directly. Single Up/Down presses always navigate or scroll; Select press, the three long presses, and Double Back are customizable separately in main/folder and note views. Double Back means pressing Back twice quickly and defaults to Actions in both views. Single Back still returns; long-press Back is reserved by the watch OS to exit. The note reader has no permanent gesture hint, leaving that space for note content.
 
 ## Themes
 
