@@ -116,16 +116,26 @@ def touch_link_checks():
  settings();click('down');click('select');click('down');shot('touch-before.png')
  count=len(read_results);touch_point(60,180);shot('touch-focused.png');assert len(read_results)==count,'First tap opened instead of highlighting'
  touch_point(60,104);shot('touch-opened.png');assert len(read_results)==count+1 and read_results[-1]['title']=='Linked','Second tap did not open linked note'
- click('back');assert read_results[-1]['title']=='Project plan'
+ touch_point(30,100,end=(150,100));assert read_results[-1]['title']=='Project plan','Swipe back did not return to source note'
  # Back restores the link selection. Repeated taps must still open it.
  touch_point(60,104);assert read_results[-1]['title']=='Linked'
  click('back');touch_point(60,170,end=(60,60));shot('touch-swiped.png')
  count=len(read_results);touch_point(60,60,end=(60,170));assert len(read_results)==count,'Swipe activated a note'
  click('select');assert read_results[-1]['title']=='Linked','Swipe up/down failed to restore the link row'
- click('back');double_back();shot('touch-actions.png');click('back')
+ click('back');double_back();shot('touch-actions.png')
+ pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]
+ assert sum(v<64 for v in top)>len(top)//2,'Actions opened with blank top padding'
+ click('back')
  touch_point(60,104);assert read_results[-1]['title']=='Linked','Reader touch did not resume after Actions'
- click('back');click('back');shot('touch-return-browser.png')
- print('PASS: finger focus/open/repeat, Back, bidirectional swipe, and touch resumes after Actions',flush=True)
+ touch_point(30,100,end=(150,100));touch_point(30,100,end=(150,100));shot('touch-return-browser.png')
+ double_back();shot('touch-browser-actions.png')
+ pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]
+ assert sum(v<64 for v in top)>len(top)//2,'Browser Actions opened with blank top padding'
+ click('back');click('up');click('select');shot('touch-capture-choices.png')
+ pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]
+ assert sum(v<64 for v in top)>len(top)//2,'Capture choices opened with blank top padding'
+ click('back')
+ print('PASS: finger focus/open/repeat, swipe Back, bidirectional scrolling, top-aligned Actions, and resumed touch',flush=True)
 def top_checks():
  settings();shot('browse-start-top.png')
  pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]

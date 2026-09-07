@@ -18,3 +18,7 @@ The publisher uploads this exact reviewed package. Documentation-only release up
 ## Unpublished 1.3.3 candidate
 
 Reader tap activation and link-heavy scrolling improvements are built and emulator-tested. Physical-watch acceptance and Connector deployment are pending. See [validation and exact package hash](READER_TOUCH_PERFORMANCE_VALIDATION.md). The public beta record above remains unchanged.
+
+## Unpublished 1.3.4 candidate
+
+Rightward swipe Back in the note reader and top-aligned Actions/dictation/sort menus are built and emulator-tested. This watch-only candidate works with the installed 1.3.3 gateway. See [validation and package hash](SWIPE_BACK_ACTIONS_VALIDATION.md). Physical installation and acceptance are pending.

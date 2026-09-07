@@ -504,15 +504,22 @@ static void actions_load(Window *window){
   menu_layer_set_normal_colors(s_action_menu,s_background,s_foreground);menu_layer_set_highlight_colors(s_action_menu,s_highlight,s_selection_text);
   menu_layer_set_click_config_onto_window(s_action_menu,window);layer_add_child(window_get_root_layer(window),menu_layer_get_layer(s_action_menu));
 }
+static void actions_top(void){
+  if(!s_action_menu)return;
+  menu_layer_set_selected_index(s_action_menu,MenuIndex(0,0),MenuRowAlignTop,false);
+  ScrollLayer *scroll=menu_layer_get_scroll_layer(s_action_menu);
+  if(scroll_layer_get_content_offset(scroll).y>0)scroll_layer_set_content_offset(scroll,GPointZero,false);
+}
+static void actions_appear(Window *window){marquee_appear(window);actions_top();}
 static void actions_unload(Window *window){menu_layer_destroy(s_action_menu);s_action_menu=NULL;}
 static void open_actions(ClickRecognizerRef recognizer,void *context){
   if(s_stitch){set_status("Stitch in progress · Back to finish");return;}
   if(s_action_menu)return;
   s_capture_choices=false;s_sort_choices=false;
   if(s_actions)window_destroy(s_actions);
-  s_actions=window_create();window_set_window_handlers(s_actions,(WindowHandlers){.load=actions_load,.unload=actions_unload,.appear=marquee_appear,.disappear=marquee_disappear});window_stack_push(s_actions,true);
+  s_actions=window_create();window_set_window_handlers(s_actions,(WindowHandlers){.load=actions_load,.unload=actions_unload,.appear=actions_appear,.disappear=marquee_disappear});window_stack_push(s_actions,true);
 }
-static void show_capture_choices(void){open_actions(NULL,NULL);s_capture_choices=true;if(s_action_menu)menu_layer_reload_data(s_action_menu);}
+static void show_capture_choices(void){open_actions(NULL,NULL);s_capture_choices=true;if(s_action_menu){menu_layer_reload_data(s_action_menu);actions_top();}}
 static void image_clear(void){if(s_image){gbitmap_destroy(s_image);s_image=NULL;}s_image_loading=false;s_image_index=-1;s_image_error[0]=0;}
 static uint16_t rich_rows(MenuLayer *menu,uint16_t section,void *context){return s_rich_count?s_rich_count:1;}
 #include "markdown.h"
@@ -632,6 +639,7 @@ static void notesy_reader_touch(const TouchEvent *event,void *context){
   // classify by movement rather than callback wall time. A stationary hold
   // also activates on release; a drag never becomes a tap.
   if(s_reader_touch_max<=10)notesy_reader_tap_at(GPoint(event->x,event->y));
+  else if(dx>=40&&ax>ay*2)back_click(NULL,NULL);
   else if(ay>=28&&ay>ax*2)scroll_note(dy<0);
 }
 
@@ -709,7 +717,7 @@ static void return_to_top(void){
 static void perform(int action){
   if(action==14||action==15||(action>=20&&action<=23)){
     if(s_stitch){set_status("Finish Stitch first");return;}
-    if(action==15){open_actions(NULL,NULL);s_sort_choices=true;s_capture_choices=false;if(s_action_menu)menu_layer_reload_data(s_action_menu);return;}
+    if(action==15){open_actions(NULL,NULL);s_sort_choices=true;s_capture_choices=false;if(s_action_menu){menu_layer_reload_data(s_action_menu);actions_top();}return;}
     if(action>=20){s_sort=action-20;s_tag[0]=0;s_tag_picker=s_sort==3;}
     return_to_top();return;
   }

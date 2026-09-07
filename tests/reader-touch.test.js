@@ -40,10 +40,11 @@ typedef struct {int x,y;} GPoint;
 #define GPoint(x,y) ((GPoint){x,y})
 enum {TouchEvent_Touchdown,TouchEvent_PositionUpdate,TouchEvent_Liftoff};
 typedef struct {int type;bool non_navigational;int x,y;} TouchEvent;
-static void *s_reader=(void*)1,*top=(void*)1;static bool s_loading,s_stitch;static int taps,up,down;
+static void *s_reader=(void*)1,*top=(void*)1;static bool s_loading,s_stitch;static int taps,up,down,backs;
 static void *window_stack_get_top_window(void){return top;}
 static void notesy_reader_tap_at(GPoint p){taps++;}
 static void scroll_note(bool d){if(d)down++;else up++;}
+static void back_click(void*r,void*c){backs++;}
 ${body}
 static void event(int kind,int x,int y){TouchEvent e={kind,false,x,y};notesy_reader_touch(&e,NULL);}
 int main(void){
@@ -52,6 +53,8 @@ int main(void){
  event(TouchEvent_Touchdown,40,100);event(TouchEvent_PositionUpdate,80,100);event(TouchEvent_Liftoff,40,100);assert(taps==1);
  event(TouchEvent_Touchdown,40,170);event(TouchEvent_Liftoff,40,60);assert(down==1&&taps==1);
  event(TouchEvent_Touchdown,40,60);event(TouchEvent_Liftoff,40,170);assert(up==1);
+ event(TouchEvent_Touchdown,30,100);event(TouchEvent_Liftoff,140,110);assert(backs==1&&taps==1);
+ event(TouchEvent_Touchdown,140,100);event(TouchEvent_Liftoff,30,100);assert(backs==1);
  event(TouchEvent_Touchdown,40,100);s_loading=true;event(TouchEvent_Liftoff,40,100);s_loading=false;assert(taps==1);
  event(TouchEvent_Touchdown,40,100);top=NULL;event(TouchEvent_Liftoff,40,100);top=s_reader;assert(taps==1);
  event(TouchEvent_Touchdown,40,100);TouchEvent ignored={TouchEvent_Liftoff,true,40,100};notesy_reader_touch(&ignored,NULL);assert(taps==1);
