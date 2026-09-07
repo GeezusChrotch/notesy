@@ -11,7 +11,7 @@ service. Your phone's dictation provider and any optional third-party services h
 ## Connect the Mac
 
 1. Install **Organik Apps Pebble Connector 0.7.0 or later** from its
-   [release page](https://github.com/GeezusChrotch/organik-pebble-connector/releases/latest).
+   [release page](https://github.com/GeezusChrotch/organik-pebble-connector/releases/tag/v0.7.0).
    Drag the app into Applications and open it.
 2. Install [Tailscale](https://tailscale.com/download) on the Mac and phone. Sign both into the
    same private network and leave Tailscale connected.
@@ -26,7 +26,7 @@ your Notesy credential does not grant access to the other connectors.
 
 ## Install and pair the watch
 
-1. Open `Notesy-1.2.0.pbw` from the [Notesy release](https://github.com/GeezusChrotch/notesy/releases/tag/v1.2.0)
+1. Open `Notesy-1.4.4.pbw` from the [Notesy release](https://github.com/GeezusChrotch/notesy/releases/tag/v1.4.4)
    on your phone and open it with Pebble. You can also install
    Notesy from the Pebble app's store.
 2. In the phone's Pebble app, open **Notesy → Settings**.
