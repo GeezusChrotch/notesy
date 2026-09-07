@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.4 — public beta
+
+Continuous document scrolling; blank-page repairs; linked-note navigation and swipe Back; inline HTML/Markdown cleanup and strikethrough fix; full-height reader; configurable Double Back; shared top-aligned startup. Requires Connector 0.7.0+. See [release notes](docs/RELEASE_NOTES_1.4.4.md) for validation limits.
+
 ## 1.3.2 — unreleased candidate
 
 - Handle reader taps explicitly: highlight a linked-note row, then tap again to open.

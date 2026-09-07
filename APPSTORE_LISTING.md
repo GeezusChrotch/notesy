@@ -1,10 +1,10 @@
 # Notesy — Pebble Appstore submission
 
-Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — public beta 1.2.0.
+Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — existing listing; 1.4.4 update prepared for the release coordinator.
 
 - Name: Notesy
 - Developer: Organik Apps
-- Version: 1.2.0
+- Version: 1.4.4
 - Category: Utilities
 - Platforms: Pebble Time (basalt), Pebble Time 2 (emery)
 - Price: Free
@@ -24,11 +24,11 @@ Dictate new notes or append to existing ones. Quick Dictate captures one 15-seco
 
 Browse folders and root notes, with more entries loading as you scroll in either direction. Sort by name, modified date, created date or tag. The tag picker lists tags from notes directly in the current folder. Return to top jumps back to the first entry.
 
-Pin favorites, hide folders, check Markdown tasks, and view local pictures and Excalidraw previews. Tap a different item to highlight it and read its scrolling title; tap the highlighted item to activate.
+Scroll notes naturally, open linked Obsidian notes, check tasks, and view local pictures and Excalidraw previews. Pin favorites and hide folders. Tap a different item to highlight it and read its scrolling title; tap the highlighted item to activate.
 
-Choose Pome themes, fonts, colors and marquee speed. Customize Select and long presses, including Return to top and Sort notes. Up and Down always navigate.
+Choose Pome themes, fonts, colors and marquee speed. Customize Select, long presses and Double Back, including Return to top and Sort notes. Up and Down always navigate.
 
-Requires macOS 14+, Organik Apps Pebble Connector 0.5.0+, and Tailscale on the Mac and paired phone. Keep the Mac awake. iPhone is the tested phone setup. No Obsidian plugin or subscription needed.
+Requires macOS 14+, Organik Apps Pebble Connector 0.7.0+, and Tailscale on the Mac and paired phone. Keep the Mac awake. iPhone is the tested phone setup. No Obsidian plugin or subscription needed.
 
 No Notesy account, subscription or analytics. Images use your private connection; remote web images and plugin-generated views aren't supported. Automated checks pass and the installed update received positive user feedback. Fresh setup testing remains pending.
 

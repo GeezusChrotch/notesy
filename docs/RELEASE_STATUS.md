@@ -1,3 +1,19 @@
+# Notesy 1.4.4 — public beta release preparation
+
+Requires Organik Apps Pebble Connector 0.7.0 or later. Release approval was supplied through the release coordinator on 2026-09-07. GitHub/Pages publication is being performed by this task; the coordinator owns the Pebble store dashboard.
+
+- 84 automated tests pass, including the portable shared startup-clamp regression in touch and non-touch modes.
+- Clean Basalt and Emery builds pass; embedded versionLabel is 1.4.4. PBW excludes SDK source maps and developer paths.
+- Reader/formatting/Double Back implementation was verified in earlier candidate emulator/native checks; the shared startup fix was visually checked in the emulator by its owner.
+- Exact 1.4.4 PBW has not been installed or accepted on a physical watch. Earlier 1.4.1 scrolling feedback was positive; 1.4.3 was installed; the later startup-fixed installation attempt could not connect to the phone.
+- Fresh Mac/phone setup and final hardware acceptance remain pending. Public-beta publication does not imply those checks passed.
+
+PBW SHA-256: `2f1fd4dc46779bd73e4d9d81f3bf2f60fa6c8906593d6b6544cde6633d1ca91c`.
+
+See [1.4.4 release notes](RELEASE_NOTES_1.4.4.md). Older entries below are historical snapshots, not current installation status.
+
+---
+
 # Notesy 1.2.0 — public beta
 
 Release date: 2026-09-06.

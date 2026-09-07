@@ -109,7 +109,7 @@ Open **Actions → Sort notes** for **Name (A–Z)**, **Date modified (newest fi
 
 Creation dates use the filesystem creation time supplied by macOS, which can change when files are copied or restored. If a creation time is unavailable, modified time is used. Hidden folders remain hidden. New browsing requires the matching 1.2.0 Notesy service in Organik Apps Pebble Connector; update the Connector before installing this watch build.
 
-## Upcoming: note links and Markdown (1.3.0 candidate)
+## Note links and Markdown (1.4.4)
 
 See [note links and Markdown](MARKDOWN_AND_LINKS.md) for selectable linked notes,
 Back navigation, formatting support and the matching-Connector requirement.

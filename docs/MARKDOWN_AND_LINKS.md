@@ -1,8 +1,6 @@
-# Note links and Markdown — 1.3.0 candidate
+# Note links and Markdown — 1.4.4
 
-This feature needs both the new Notesy watch package and a Connector bundle containing
-its matching gateway. Connector 0.5.0 / Notesy 1.2.0 remain the published baseline;
-this document does not announce a release or an installed update.
+Notesy 1.4.4 requires Organik Apps Pebble Connector 0.7.0 or later for matching note parsing and style markers. Earlier candidate validation sections below record the development history.
 
 ## Open linked notes
 

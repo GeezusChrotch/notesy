@@ -6,13 +6,13 @@
 
 [Install](docs/INSTALL.md) · [User guide](docs/USER_GUIDE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Privacy](PRIVACY.md) · [Release preparation](RELEASING.md)
 
-Notesy 1.2.0 is released alongside
+Notesy 1.4.4 is released alongside
 [Organik Apps Pebble Connector](https://github.com/GeezusChrotch/organik-pebble-connector).
 [Install from the Pebble store](https://apps.repebble.com/a9d4515681c34b5088993dc6) or
-[download the 1.2.0 public beta](https://github.com/GeezusChrotch/notesy/releases/tag/v1.2.0).
+[download the 1.4.4 public beta](https://github.com/GeezusChrotch/notesy/releases/tag/v1.4.4).
 See [release status](docs/RELEASE_STATUS.md) for validation details.
 
-Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.2.0 · public beta.
+Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.4.4 · public beta.
 Choose the vault in **Organik Apps Pebble Connector**. No Obsidian plugin or dedicated notes folder
 is required. Ordinary Markdown notes created in Obsidian appear alongside watch-created notes.
 No personal vault, account, network address or credential is embedded in the shared app.
@@ -36,7 +36,7 @@ for each view**: normal navigation, Quick Dictate or Stitch for a new note or ap
 Double-pressing Back always opens Actions.
 There are no Back or Next/Previous page menu entries.
 
-The main page shows pins first, then folders, then root notes. In 1.2.0, Actions → Sort notes and phone Vault settings offer name, modified date, created date or scoped tag browsing. Return to top is available in Actions and as a configurable shortcut. See [browsing and sorting](docs/USER_GUIDE.md#browsing-sorting-and-returning-to-the-top-120); install the matching Connector service before this watch build.
+The main page shows pins first, then folders, then root notes. In 1.4.4, Actions → Sort notes and phone Vault settings offer name, modified date, created date or scoped tag browsing. Return to top is available in Actions and as a configurable shortcut. See [browsing and sorting](docs/USER_GUIDE.md#browsing-sorting-and-returning-to-the-top-120); install the matching Connector service before this watch build.
 Nested folders open with Select. Lists keep 15 entries on the watch; moving beyond either edge
 loads the adjacent batch automatically. Folder listings are stable while paging, even if files
 change in Obsidian. Use Refresh in Actions to see changes; listings expire after 30 minutes.
@@ -79,19 +79,13 @@ expand subfolders as needed, then Apply hidden folders. Hidden choices apply to 
 and search, including descendants; reopen Notesy or refresh its list afterward. Files are not
 moved. Pictures in hidden attachment folders can still appear in visible notes.
 
-The upcoming 1.3.0 candidate adds selectable note links and richer Markdown. See
+Notesy 1.4.4 includes selectable note links and richer Markdown. See
 [note links and Markdown](docs/MARKDOWN_AND_LINKS.md) for behavior and supported syntax.
-It requires the matching future Connector bundle.
+Requires Organik Apps Pebble Connector 0.7.0 or later.
 
-Notes with Markdown tasks or embedded pictures open as a content menu. Long paragraphs scroll
-within their row before Up/Down moves to the next item; photo rows keep their position as images
-load. Select a checkbox to
-check or uncheck it in Obsidian; only the marker changes. Normal text, line endings and metadata
-are preserved. If Obsidian edited the note since it loaded, reopen before changing a task.
-Custom note-button assignments still apply; keep Select as Normal navigation to toggle tasks.
-Task changes require the Mac connection and show saved only after acknowledgement.
+Notes scroll as continuous documents, including paragraphs, pictures and drawings. Only linked notes and task checkboxes can be selected. Select a checkbox to check or uncheck it in Obsidian; only the marker changes. Reopen the note first if Obsidian edited it since loading. Keep Select as Normal navigation to activate tasks and links. Task changes require the Mac connection and report saved only after acknowledgement.
 
-Images load inline when their menu row is selected; Select retries a failed image. Local PNG,
+Images load automatically as they enter the viewport; scroll away and back to retry a failed preview. Local PNG,
 JPEG, GIF (first frame), WebP, HEIC, TIFF, BMP and SVG files are converted by macOS into Pebble's
 64-color palette, up to 120 × 100 on Time or 176 × 150 on Time 2. Pictures are scaled to fit,
 so small text in large images may be difficult to read. Wikilinks, Markdown image links and
@@ -106,7 +100,7 @@ on your Mac. Source drawings are never rewritten; use New note alongside a drawi
 
 Choose your vault in the Mac connector, start Notesy, start its private connection, and select
 Connect phone. Scan the one-time QR code. On the phone, copy the pairing details into
-Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-1.2.0.pbw` on the watch.
+Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-1.4.4.pbw` on the watch.
 The connector requires macOS 14+ and bundles its runtime. Keep Tailscale connected on both devices.
 
 For an existing Notesy installation, update both the connector and watch app, then reopen
@@ -165,7 +159,7 @@ API remains compatible with old queued notes. The Mac build bundles the server m
 Renderer versions and dependency overrides are pinned in renderer/package-lock.json. The renderer
 blocks HTTP(S) requests and only receives the selected local image or drawing.
 
-Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-1.2.0.pbw` for distribution; the latter
+Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-1.4.4.pbw` for distribution; the latter
 omits SDK source maps. `tests/watch-emulator.py` exercises the compiled C app against the disposable
 vault in `tests/emulator-fixture.js`; it requires a fixture PBW with inert phone JS, never a physical
 watch. Phone transport and settings have separate automated tests. See `PRIVACY.md` for data handling.
@@ -185,15 +179,13 @@ WATCH_TEST_RICH_ONLY=1 python tests/watch-emulator.py
 
 Use only the emulator fixture for those commands. The dictation check supplies simulated
 transcripts through the SDK voice protocol; it does not verify a real microphone or phone speech
-service. Normal watch installations must use `dist/Notesy-1.2.0.pbw`.
+service. Normal watch installations must use `dist/Notesy-1.4.4.pbw`.
 
 Notesy was previously named StoneNotes. Its watch UUID, saved settings, queues, pins and pairing remain compatible. Internal storage keys and the wire service ID keep their original names; existing notes are not renamed or rewritten.
 
 ## Beta testing status
 
-The release passes 58 automated tests and Basalt/Emery builds. Compiled emulator checks cover
-Stitch, ordinary capture, scrolling, tasks and previews. The installed 1.2.0 update received positive user feedback. Fresh
-Mac/phone setup checks remain pending; see [release status](docs/RELEASE_STATUS.md).
+The release passes automated tests and Basalt/Emery builds. Native and earlier emulator checks cover scrolling, links, tasks, formatting, Double Back and menu startup. This exact 1.4.4 package has not been physically installed or accepted; earlier reader improvements received positive feedback. Fresh Mac/phone setup and end-to-end hardware acceptance remain pending. See [release status](docs/RELEASE_STATUS.md).
 
 ## Thank you
 
