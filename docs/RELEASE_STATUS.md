@@ -1,4 +1,4 @@
-# Notesy 1.4.6 — public beta release preparation
+# Notesy 1.4.6 — published public beta
 
 Publication authorized through the release coordinator on 2026-09-07. Requires public Organik Apps Pebble Connector 0.8.0 or later. This task owns GitHub and Pages; the coordinator exclusively owns the Pebble dashboard.
 
@@ -6,7 +6,9 @@ Publication authorized through the release coordinator on 2026-09-07. Requires p
 - 91 automated tests and clean Basalt/Emery builds pass. Packaged Connector PDF fixtures also passed.
 - Exact 1.4.6 PBW installed successfully via the coordinated serial phone installer. Physical PDF/image visual acceptance and fresh setup remain pending.
 - Local Connector 0.7.3 build 18 was verified with the PDF runtime; public supported minimum is 0.8.0.
-- GitHub publication is held until the matching public Connector download is verified. Store publication is tracked by the coordinator.
+- Published on GitHub after Connector 0.8.0 public verification. Release target: `194611e868ee13ffc613b48b3ea51a12f4f0cfdd`. All five anonymous public downloads match the prepared SHA-256 hashes.
+- Live website returned HTTP 200 with 1.4.6 and minimum Connector 0.8.0. See [publication verification](PUBLICATION_VERIFICATION_1.4.6.json).
+- Store publication is tracked by the coordinator; this thread did not change the dashboard.
 
 PBW SHA-256: `f16357d690ca1c6bad33d98d5a9d482d5ef4438e7dcfedf8c2858ed9fa16f225`.
 
