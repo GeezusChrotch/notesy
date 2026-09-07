@@ -37,3 +37,14 @@ renderer blocks HTTP(S) requests and uses bundled libraries and fonts. Local ima
 written briefly into a private temporary directory for conversion and is removed afterward. Up
 to 12 converted previews remain in the gateway's memory cache. No media is uploaded to Organik
 Apps or Excalidraw. Internet image URLs are not fetched.
+
+When a displayed note contains a bare HTTP(S) URL without a descriptive label,
+the Connector requests that public web page directly to read its HTML title. The
+website receives the URL request and the Mac's public IP address. Notesy sends no
+note body, cookies, login credentials or referrer, and runs no page scripts. Named
+links use their existing label without a request. Private/local addresses and
+unusual ports are excluded. Requests have a 2.5-second deadline and a 128 KiB read
+limit; redirects are rechecked. Up to 256 titles remain in memory for one day
+(failures for 15 minutes). If a title cannot be obtained, Notesy shows the hostname.
+The Markdown file is not changed. This page-metadata request is separate from the
+local image renderer, which still does not fetch Internet images.

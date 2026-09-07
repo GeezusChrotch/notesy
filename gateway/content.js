@@ -4,11 +4,17 @@ const md=require('./markdown');
 const hash=v=>crypto.createHash('sha256').update(v).digest('hex');
 // Byte offsets refer to the original Markdown; toggling changes exactly one marker byte.
 function parse(markdown,plainText,pages){
- const blocks=[];let offset=0,fence='',front=false,first=true,paragraph=[],format=0;
+ const blocks=[];let offset=0,fence='',front=false,first=true,paragraph=[],format=0,rendered=false;
  const flush=()=>{
   const source=paragraph.join('\n').replace(/<!-- stonenotes-append:[a-f0-9]{64} -->/g,'').trim();paragraph=[];
   const parsed=format===8?{markup:source.replace(/[\x00-\x08\x0b-\x1f]/g,''),text:source,links:[]}:md.inline(source);
-  for(const markup of md.chunks(parsed.markup))blocks.push({kind:'text',text:markup.replace(/[\x01-\x10]/g,''),markup,format});
+  if(parsed.changed)rendered=true;
+  const parts=parsed.markup.split(/\x11(\d+)\x12/g);let style='\x01';
+  for(let i=0;i<parts.length;i++){
+   if(i%2){blocks.push(parsed.web[Number(parts[i])]);continue;}
+   const part=(i?style:'')+parts[i];for(const ch of parts[i])if(ch.charCodeAt(0)>=1&&ch.charCodeAt(0)<=16)style=ch;
+   for(const markup of md.chunks(part))if(markup.replace(/[\x01-\x10]/g,'').trim())blocks.push({kind:'text',text:markup.replace(/[\x01-\x10]/g,''),markup,format});
+  }
   blocks.push(...parsed.links);format=0;
  };
  for(const full of markdown.match(/[^\n]*\n|[^\n]+$/g)||[]){
@@ -32,7 +38,7 @@ function parse(markdown,plainText,pages){
   }else paragraph.push(line);
   offset+=Buffer.byteLength(full);
  }
- flush();return {revision:hash(Buffer.from(markdown)),blocks,rich:blocks.some(b=>b.kind!=='text'||b.format||b.markup!==b.text)};
+ flush();return {revision:hash(Buffer.from(markdown)),blocks,rich:rendered||blocks.some(b=>b.kind!=='text'||b.format||b.markup!==b.text)};
 }
 // Excalidraw's plugin also creates ordinary .md filenames with a frontmatter marker.
 function isDrawing(file,data){

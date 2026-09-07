@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.2 — unreleased candidate
+
+- Handle reader taps explicitly: highlight a linked-note row, then tap again to open.
+- Display web-link labels or fetched page titles as text; fall back to site names.
+- Bound page-title requests and keep private/local destinations out of title fetching.
+
 ## 1.3.1 — unreleased candidate
 
 - Start loaded lists at the top instead of centering New note in empty space; preserve two-tap selection.

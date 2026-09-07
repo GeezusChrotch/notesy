@@ -46,3 +46,18 @@ Formatting and navigation never rewrite Markdown on disk; checking a task still
 changes only its checkbox marker after the Connector acknowledges the save.
 
 Reference: [Obsidian internal links](https://obsidian.md/help/links).
+
+## Reader touch and web titles — 1.3.2 candidate
+
+Tap an **Open linked note** row to highlight it, then tap the highlighted row to
+open it. This also works through the reader's explicit touch handler, independently
+of custom button assignments. The link label in the paragraph remains text; the
+separate link row is the touch target. Back returns to the previous note.
+
+Web links no longer create an unavailable-link action. Named Markdown links and
+HTML anchors display their existing label, and URL labels can use a supplied
+Markdown title. Bare URLs and autolinks show the page title fetched by the matching
+Connector, with the site hostname as fallback. These are text rows, not web-browser
+actions. The Connector requests public page metadata directly; see [privacy](../PRIVACY.md).
+This requires the new matching gateway; installed Connector 0.6.0 does not include
+the web-title change yet. Reader tapping is a watch-only change.

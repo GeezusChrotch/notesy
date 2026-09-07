@@ -602,8 +602,24 @@ static void notesy_rich_selected(MenuLayer *menu,MenuIndex *index,void *context)
 }
 #if defined(PBL_TOUCH)
 static void notesy_touch_reader_tap(const Recognizer *recognizer,RecognizerEvent event){
-  if(event!=RecognizerEvent_Completed||!touch_service_is_enabled()||s_loading||s_stitch||s_rich)return;
-  open_actions(NULL,NULL);
+  if(event!=RecognizerEvent_Completed||!touch_service_is_enabled()||s_loading||s_stitch)return;
+  if(!s_rich){open_actions(NULL,NULL);return;}
+  if(!s_rich_menu)return;
+  GPoint point=tap_recognizer_get_tap_point(recognizer);
+  GPoint origin=layer_convert_point_to_screen(menu_layer_get_layer(s_rich_menu),GPointZero);
+  GRect bounds=layer_get_bounds(menu_layer_get_layer(s_rich_menu));
+  if(point.x<origin.x||point.x>=origin.x+bounds.size.w||point.y<origin.y||point.y>=origin.y+bounds.size.h)return;
+  int y=point.y-origin.y-scroll_layer_get_content_offset(menu_layer_get_scroll_layer(s_rich_menu)).y;
+  for(int row=0;row<s_rich_count;row++){
+    MenuIndex index=MenuIndex(0,row);int height=rich_height(s_rich_menu,&index,NULL);
+    if(y>=0&&y<height){
+      MenuIndex selected=menu_layer_get_selected_index(s_rich_menu);
+      if(selected.section!=index.section||selected.row!=index.row)rich_focus(row,true);
+      else notesy_rich_selected(s_rich_menu,&index,NULL);
+      return;
+    }
+    y-=height;
+  }
 }
 #endif
 static void rich_enable(void){

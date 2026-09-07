@@ -118,3 +118,8 @@ test('phone transports Markdown controls, heading levels and full opaque linked-
  const target='a'.repeat(64);p.requests[0].status=200;p.requests[0].responseText=JSON.stringify({rich:true,title:'Source',parent:c.root,revision:'e'.repeat(64),offset:0,total:3,blocks:[{kind:'text',id:'0',text:'Bold',markup:'\x02Bold\x01',format:1},{kind:'link',id:'1',text:'Alias',target},{kind:'link',id:'2',text:'Missing',error:'Linked note is missing or hidden'}]});p.requests[0].onload();
  const rows=p.messages.filter(m=>m.TYPE===13);assert.equal(rows[0].TEXT,'\x02Bold\x01');assert.equal(rows[0].FORMAT,1);assert.equal(rows[1].ITEM_ID,target);assert.equal(rows[1].ENTRY_KIND,3);assert.equal(rows[1].TEXT,'Alias');assert.equal(rows[2].ENTRY_KIND,4);assert.match(rows[2].TEXT,/missing/);
 });
+test('web page titles are transported as plain reader text without an open-link action',()=>{
+ const p=phone(),c={...config,browserId:'b'.repeat(64),root:'c'.repeat(64)};p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify(c))});p.handlers.appmessage({payload:{COMMAND:2,API:3,REQUEST:20,NOTE_ID:'d'.repeat(64)}});
+ p.requests[0].status=200;p.requests[0].responseText=JSON.stringify({rich:true,title:'Web notes',parent:c.root,revision:'e'.repeat(64),offset:0,total:1,blocks:[{kind:'web',id:'0',text:'Example Domain',ref:'https://example.com/'}]});p.requests[0].onload();
+ const row=p.messages.find(m=>m.TYPE===13);assert.equal(row.TEXT,'Example Domain');assert.equal(row.ENTRY_KIND,0);assert.equal(row.ITEM_ID,'0');assert.ok(!JSON.stringify(row).includes('https://'));
+});

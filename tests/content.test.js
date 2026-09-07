@@ -77,7 +77,7 @@ test('missing, ambiguous, hidden, external and escaping links never open an arbi
  const f=fixture(t);f.add('One/Duplicate.md');f.add('Two/Duplicate.md');f.add('Private/Secret.md');f.add('Visible.md');
  f.b.setHidden({vaultId:f.b.vaultId,hidden:['Private']});fs.symlinkSync(path.join(f.vault,'Visible.md'),path.join(f.vault,'Symlink.md'));
  const id=f.add('Source.md','[[Duplicate]]\n[[Private/Secret]]\n[[Missing]]\n[Web](https://example.com)\n[Escape](../../outside.md)\n[[Symlink]]');
- const before=fs.readdirSync(f.vault),links=f.b.content(id).blocks.filter(b=>b.kind==='link');assert.equal(links.length,6);assert.ok(links.every(b=>!b.target&&b.error));assert.match(links[0].error,/Ambiguous/);assert.deepEqual(fs.readdirSync(f.vault),before);
+ const before=fs.readdirSync(f.vault),links=f.b.content(id).blocks.filter(b=>b.kind==='link');assert.equal(links.length,5);assert.ok(!f.b.content(id).blocks.some(b=>b.kind==='link'&&b.ref.startsWith('https:')));assert.ok(links.every(b=>!b.target&&b.error));assert.match(links[0].error,/Ambiguous/);assert.deepEqual(fs.readdirSync(f.vault),before);
 });
 test('task rows with note links retain exact byte markers and images keep stable block indices',t=>{
  const f=fixture(t);f.add('Target.md');const id=f.add('Source.md','- [ ] Read [[Target]]\n\n![[photo.png]]\n\n'+Array.from({length:25},()=> '[[Target]]').join('\n'));

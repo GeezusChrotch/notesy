@@ -240,7 +240,7 @@ function makeServer({vault, state, token, folder}) {
       if(req.method==='POST' && url.pathname==='/v1/notes') return send(res,200,legacyStore().create(body));
       if(req.method==='GET'&&url.pathname==='/v3/folders')return send(res,200,browser.folders(url.searchParams.get('parent')||''));
       if(req.method==='POST'&&url.pathname==='/v3/hidden')return send(res,200,browser.setHidden(body));
-      if(req.method==='GET'&&/^\/v3\/notes\/[a-f0-9]{64}$/.test(url.pathname))return send(res,200,browser.content(url.pathname.split('/').pop(),integer('page')));
+      if(req.method==='GET'&&/^\/v3\/notes\/[a-f0-9]{64}$/.test(url.pathname))return send(res,200,await require('./web-titles').enrich(browser.content(url.pathname.split('/').pop(),integer('page'))));
       const media=url.pathname.match(/^\/v3\/notes\/([a-f0-9]{64})\/image$/);
       if(req.method==='GET'&&media)return send(res,200,await require('./media').render(browser,media[1],integer('index'),url.searchParams.get('revision')||'',integer('width'),integer('height')));
       const task=url.pathname.match(/^\/v3\/notes\/([a-f0-9]{64})\/task$/);
