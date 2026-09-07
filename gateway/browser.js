@@ -9,7 +9,7 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     this.home=path.join(state,'browser',this.vaultId);fs.mkdirSync(this.home,{recursive:true,mode:0o700});
     this.file=path.join(this.home,'index.json');
     this.index=fs.existsSync(this.file)?JSON.parse(fs.readFileSync(this.file,'utf8')):{entries:{},pins:[]};
-    this.snapshots=new Map();this.index.hidden=this.index.hidden||[];
+    this.snapshots=new Map();this.contentViews=new Map();this.index.hidden=this.index.hidden||[];
     this.root=this.remember('',true);this.flush();
   }
   hidden(relative){return this.index.hidden.some(p=>relative===p||relative.startsWith(p+'/'));}
@@ -26,10 +26,10 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     if(body.vaultId!==this.vaultId)throw new Fault(409,'The vault changed. Load folders again.');
     if(!Array.isArray(body.hidden)||body.hidden.length>500||body.hidden.some(p=>typeof p!=='string'||!p||p.length>1024))throw new Fault(400,'Choose up to 500 folders to hide.');
     for(const p of body.hidden)this.checked(p,true);
-    this.index.hidden=[...new Set(body.hidden)].sort();this.snapshots.clear();this.flush();return {saved:true,hidden:this.index.hidden};
+    this.index.hidden=[...new Set(body.hidden)].sort();this.snapshots.clear();this.contentViews.clear();this.flush();return {saved:true,hidden:this.index.hidden};
   }
-  flush(){atomicJSON(this.file,this.index);}
-  remember(relative,folder){const id=hash((folder?'folder:':'note:')+relative);this.index.entries[id]={relative,folder};return id;}
+  flush(){atomicJSON(this.file,this.index);this.indexDirty=false;}
+  remember(relative,folder){const id=hash((folder?'folder:':'note:')+relative);if(!this.index.entries[id]){this.index.entries[id]={relative,folder};this.indexDirty=true;}return id;}
   checked(relative,folder,media=false){
     if(typeof relative!=='string'||path.isAbsolute(relative)||(relative!==''&&relative.split('/').some(p=>!p||p.startsWith('.')||p.includes('\0'))))throw new Fault(400,'Invalid vault location.');
     let current=this.vault;const parts=relative?relative.split('/'):[];
@@ -161,14 +161,24 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     try{const stat=fs.fstatSync(fd);if(!stat.isFile()||stat.size>1024*1024)throw new Fault(413,'This note exceeds the 1 MB watch limit.');const data=fs.readFileSync(fd);if(data.length>1024*1024)throw new Fault(413,'This note exceeds the watch limit.');return {entry,file,data};}finally{fs.closeSync(fd);}
   }
   content(id,page=0){
-    const {entry,data}=this.raw(id),drawing=require('./content').isDrawing(entry.relative,data),parsed=drawing?{revision:hash(data),rich:true,blocks:[]}:require('./content').parse(data.toString('utf8'),plainText,pages);
+    const {entry,data}=this.raw(id),revision=hash(data),drawing=require('./content').isDrawing(entry.relative,data);
+    let view=this.contentViews.get(id);
+    // Reuse parsing and basename lookup while paging the same unchanged note.
+    // Page zero is an explicit reopen/refresh and always discovers fresh targets.
+    if(!page||!view||view.revision!==revision||view.expires<Date.now()){
+      const parsed=drawing?{revision,rich:true,blocks:[]}:require('./content').parse(data.toString('utf8'),plainText,pages);
+      view={revision,parsed,link:require('./links')(this,entry.relative),expires:Date.now()+30000};
+      if(this.contentViews.size>=4)this.contentViews.delete(this.contentViews.keys().next().value);
+      this.contentViews.set(id,view);
+    }
+    const parsed=view.parsed;
     if(drawing){parsed.rich=true;parsed.blocks=[{kind:'image',ref:path.posix.basename(entry.relative),text:'Drawing'}];}
     if(!parsed.rich)return {...this.read(id,page),rich:false};
-    const link=require('./links')(this,entry.relative);
-    const parent=path.posix.dirname(entry.relative),blocks=parsed.blocks.map((b,i)=>({...b,id:b.kind==='task'?b.id:String(i),text:shortText(b.text,220)}));
+    const link=view.link;
+    const parent=path.posix.dirname(entry.relative),blocks=parsed.blocks;
     if(page*15>=blocks.length&&page)throw new Fault(409,'The note changed. Reopen it.');
-    const visible=blocks.slice(page*15,page*15+15).map(b=>b.kind==='link'?{...b,...link(b)}:b);
-    if(visible.some(b=>b.target))this.flush();
+    const visible=blocks.slice(page*15,page*15+15).map((b,i)=>({...b,id:b.kind==='task'?b.id:String(page*15+i),text:shortText(b.text,220)})).map(b=>b.kind==='link'?{...b,...link(b)}:b);
+    if(this.indexDirty)this.flush();
     return {id,title:this.item(id).title,parent:this.remember(parent==='.'?'':parent,true),pinned:this.index.pins.includes(id),rich:true,revision:parsed.revision,offset:page*15,total:blocks.length,blocks:visible};
   }
   task(id,body){

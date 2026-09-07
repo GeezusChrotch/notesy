@@ -83,3 +83,10 @@ test('task rows with note links retain exact byte markers and images keep stable
  const f=fixture(t);f.add('Target.md');const id=f.add('Source.md','- [ ] Read [[Target]]\n\n![[photo.png]]\n\n'+Array.from({length:25},()=> '[[Target]]').join('\n'));
  const v=f.b.content(id);assert.equal(v.blocks[0].kind,'task');assert.equal(v.blocks[1].kind,'link');assert.equal(v.blocks[2].kind,'image');assert.equal(v.blocks[2].id,'2');assert.ok(f.b.content(id,1).blocks.some(b=>b.target));
 });
+test('paging a link-heavy note reuses basename discovery without rewriting unchanged index state',t=>{
+ const f=fixture(t);for(let i=0;i<24;i++)f.add('Targets/Linked '+i+'.md');const id=f.add('Many links.md',Array.from({length:24},(_,i)=>'[[Linked '+i+']]').join('\n'));
+ let directories=0,writes=0;const checked=f.b.checked.bind(f.b),flush=f.b.flush.bind(f.b);f.b.checked=(relative,folder,...rest)=>{if(folder)directories++;return checked(relative,folder,...rest);};f.b.flush=()=>{writes++;return flush();};
+ f.b.content(id,0);const first=directories,firstWrites=writes;assert.ok(first>0);f.b.content(id,1);assert.equal(directories,first);assert.equal(writes,firstWrites);
+ f.add('Targets/Added.md');f.b.content(id,0);assert.ok(directories>first,'Reopen must refresh lookup');
+ f.b.setHidden({vaultId:f.b.vaultId,hidden:['Targets']});assert.ok(f.b.content(id,1).blocks.filter(b=>b.kind==='link').every(b=>!b.target));
+});

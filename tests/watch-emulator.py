@@ -91,6 +91,41 @@ def double_back():
  settle()
 def shot(name):
  png.from_array(Screenshot(pebble).grab_image(),'RGB;8').save(str(ROOT/'build'/name))
+def touch_point(x,y,end=None):
+ import socket
+ port=int(os.environ['NOTESY_QMP_PORT'])
+ with socket.create_connection(('127.0.0.1',port),timeout=3) as sock:
+  stream=sock.makefile('rwb');json.loads(stream.readline())
+  def command(name,args=None):
+   message={'execute':name}
+   if args is not None:message['arguments']=args
+   stream.write((json.dumps(message)+'\n').encode());stream.flush()
+   while True:
+    answer=json.loads(stream.readline())
+    if 'error' in answer:raise AssertionError(answer)
+    if 'return' in answer:return answer
+  command('qmp_capabilities')
+  command('input-send-event',{'events':[{'type':'abs','data':{'axis':'x','value':round(x*32767/199)}},{'type':'abs','data':{'axis':'y','value':round(y*32767/227)}},{'type':'btn','data':{'button':'left','down':True}}]})
+  time.sleep(.12)
+  if end:
+   command('input-send-event',{'events':[{'type':'abs','data':{'axis':'x','value':round(end[0]*32767/199)}},{'type':'abs','data':{'axis':'y','value':round(end[1]*32767/227)}}]})
+   time.sleep(.12)
+  command('input-send-event',{'events':[{'type':'btn','data':{'button':'left','down':False}}]})
+ settle()
+def touch_link_checks():
+ settings();click('down');click('select');click('down');shot('touch-before.png')
+ count=len(read_results);touch_point(60,180);shot('touch-focused.png');assert len(read_results)==count,'First tap opened instead of highlighting'
+ touch_point(60,104);shot('touch-opened.png');assert len(read_results)==count+1 and read_results[-1]['title']=='Linked','Second tap did not open linked note'
+ click('back');assert read_results[-1]['title']=='Project plan'
+ # Back restores the link selection. Repeated taps must still open it.
+ touch_point(60,104);assert read_results[-1]['title']=='Linked'
+ click('back');touch_point(60,170,end=(60,60));shot('touch-swiped.png')
+ count=len(read_results);touch_point(60,60,end=(60,170));assert len(read_results)==count,'Swipe activated a note'
+ click('select');assert read_results[-1]['title']=='Linked','Swipe up/down failed to restore the link row'
+ click('back');double_back();shot('touch-actions.png');click('back')
+ touch_point(60,104);assert read_results[-1]['title']=='Linked','Reader touch did not resume after Actions'
+ click('back');click('back');shot('touch-return-browser.png')
+ print('PASS: finger focus/open/repeat, Back, bidirectional swipe, and touch resumes after Actions',flush=True)
 def top_checks():
  settings();shot('browse-start-top.png')
  pixels=list(Screenshot(pebble).grab_image());top=[v for row in pixels[:24] for v in row]
@@ -292,7 +327,8 @@ def refresh_checks():
  print('PASS: append confirmation during reader loading is retained and refreshes the open note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_TOP_ONLY'):top_checks()
+ if os.environ.get('WATCH_TEST_TOUCH_ONLY'):touch_link_checks()
+ elif os.environ.get('WATCH_TEST_TOP_ONLY'):top_checks()
  elif os.environ.get('WATCH_TEST_LINKS_ONLY'):link_checks()
  elif os.environ.get('WATCH_TEST_REFRESH_ONLY'):refresh_checks()
  elif os.environ.get('WATCH_TEST_STITCH_ONLY') or os.environ.get('WATCH_TEST_STITCH_STOP_ONLY'):stitch_checks()

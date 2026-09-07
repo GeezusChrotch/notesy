@@ -12,7 +12,7 @@
 typedef struct { char id[65]; char title[112]; char location[96]; bool folder,pinned; } Note;
 static Window *s_main, *s_reader, *s_actions;
 static MenuLayer *s_action_menu,*s_rich_menu;
-typedef struct {char text[241],id[65];uint8_t kind,format;bool checked;} RichItem;
+typedef struct {char text[241],id[65];uint8_t kind,format;bool checked;uint16_t text_height;} RichItem;
 static RichItem s_rich_items[15];
 static bool s_rich,s_image_loading;static int s_rich_count,s_rich_expected,s_rich_offset,s_rich_total,s_rich_restore,s_rich_scroll;
 typedef struct {char id[65];int page,row,scroll;} NoteTrail;
@@ -23,6 +23,7 @@ static GBitmap *s_image;static int s_image_index=-1,s_image_bytes,s_image_receiv
 static char s_image_error[96];
 static void rich_move(bool down);static void rich_select(void);static void rich_selection(MenuLayer *menu,MenuIndex next,MenuIndex previous,void *context);
 static void image_clear(void);
+static void markdown_reset_metrics(void);
 static bool s_scroll_to_end;
 static char s_capture_target[65],s_draft_target[65],s_last_append_id[96],s_last_append_target[65],s_delete_id[96];
 static MenuLayer *s_menu;
@@ -241,6 +242,7 @@ static GFont theme_title_font(void) {
 
 
 static void apply_theme(void) {
+  markdown_reset_metrics();for(int i=0;i<15;i++)s_rich_items[i].text_height=0;
   if (!s_custom_colors) {
   s_background = s_theme == 1 ? GColorDarkGreen : s_theme == 2 ? GColorOxfordBlue : GColorWhite;
   s_foreground = s_theme == 0 ? GColorBlack : GColorWhite;
@@ -463,10 +465,6 @@ static void notesy_touch_main_swipe(const Recognizer *recognizer, RecognizerEven
   if(event!=RecognizerEvent_Completed||!touch_service_is_enabled()||s_stitch)return;
   move_selection(swipe_recognizer_get_direction(recognizer)==SwipeDirection_Up);
 }
-static void notesy_touch_reader_swipe(const Recognizer *recognizer, RecognizerEvent event) {
-  if(event!=RecognizerEvent_Completed||!touch_service_is_enabled()||s_stitch)return;
-  scroll_note(swipe_recognizer_get_direction(recognizer)==SwipeDirection_Up);
-}
 static void notesy_touch_main_tap(const Recognizer *recognizer, RecognizerEvent event) {
   if(event!=RecognizerEvent_Completed||!touch_service_is_enabled()||s_loading||s_stitch||!s_menu)return;
   GPoint point=tap_recognizer_get_tap_point(recognizer);
@@ -518,9 +516,10 @@ static void show_capture_choices(void){open_actions(NULL,NULL);s_capture_choices
 static void image_clear(void){if(s_image){gbitmap_destroy(s_image);s_image=NULL;}s_image_loading=false;s_image_index=-1;s_image_error[0]=0;}
 static uint16_t rich_rows(MenuLayer *menu,uint16_t section,void *context){return s_rich_count?s_rich_count:1;}
 #include "markdown.h"
-static int rich_text_height(MenuLayer *menu,const RichItem *item){
+static int rich_text_height(MenuLayer *menu,RichItem *item){
+  if(item->text_height)return item->text_height;
   int width=layer_get_bounds(menu_layer_get_layer(menu)).size.w-12;
-  return markdown_layout(NULL,item,width,0);
+  item->text_height=markdown_layout(NULL,item,width,0);return item->text_height;
 }
 static int16_t rich_height(MenuLayer *menu,MenuIndex *index,void *context){
   if(index->row>=s_rich_count){return 64;}RichItem *item=&s_rich_items[index->row];
@@ -601,11 +600,10 @@ static void notesy_rich_selected(MenuLayer *menu,MenuIndex *index,void *context)
   rich_select();
 }
 #if defined(PBL_TOUCH)
-static void notesy_touch_reader_tap(const Recognizer *recognizer,RecognizerEvent event){
-  if(event!=RecognizerEvent_Completed||!touch_service_is_enabled()||s_loading||s_stitch)return;
+static void notesy_reader_tap_at(GPoint point){
+  if(!touch_service_is_enabled()||s_loading||s_stitch)return;
   if(!s_rich){open_actions(NULL,NULL);return;}
   if(!s_rich_menu)return;
-  GPoint point=tap_recognizer_get_tap_point(recognizer);
   GPoint origin=layer_convert_point_to_screen(menu_layer_get_layer(s_rich_menu),GPointZero);
   GRect bounds=layer_get_bounds(menu_layer_get_layer(s_rich_menu));
   if(point.x<origin.x||point.x>=origin.x+bounds.size.w||point.y<origin.y||point.y>=origin.y+bounds.size.h)return;
@@ -621,6 +619,22 @@ static void notesy_touch_reader_tap(const Recognizer *recognizer,RecognizerEvent
     y-=height;
   }
 }
+static bool s_reader_touch_tracking;static GPoint s_reader_touch_start;static int s_reader_touch_max;
+static void notesy_reader_touch(const TouchEvent *event,void *context){
+  if(event->non_navigational||window_stack_get_top_window()!=s_reader||s_loading||s_stitch){s_reader_touch_tracking=false;return;}
+  if(event->type==TouchEvent_Touchdown){s_reader_touch_tracking=true;s_reader_touch_start=GPoint(event->x,event->y);s_reader_touch_max=0;return;}
+  if(!s_reader_touch_tracking)return;
+  int dx=event->x-s_reader_touch_start.x,dy=event->y-s_reader_touch_start.y;
+  int ax=dx<0?-dx:dx,ay=dy<0?-dy:dy,delta=ax>ay?ax:ay;if(delta>s_reader_touch_max)s_reader_touch_max=delta;
+  if(event->type!=TouchEvent_Liftoff)return;
+  s_reader_touch_tracking=false;
+  // Touch events carry no timestamps. Rendering can delay their delivery, so
+  // classify by movement rather than callback wall time. A stationary hold
+  // also activates on release; a drag never becomes a tap.
+  if(s_reader_touch_max<=10)notesy_reader_tap_at(GPoint(event->x,event->y));
+  else if(ay>=28&&ay>ax*2)scroll_note(dy<0);
+}
+
 #endif
 static void rich_enable(void){
   s_rich=true;image_clear();layer_set_hidden(text_layer_get_layer(s_heading),true);layer_set_hidden(scroll_layer_get_layer(s_scroll),true);
@@ -630,15 +644,23 @@ static void rich_enable(void){
 static void reader_unload(Window *window) {
   s_note_depth=0;s_link_scroll=-1;s_link_target[0]=0;s_loading=false; ++s_request; clear_timeout();image_clear();marquee_stop();s_rich=false;s_rich_count=0;s_rich_restore=0;if(s_rich_menu){menu_layer_destroy(s_rich_menu);s_rich_menu=NULL;}
   text_layer_destroy(s_body); text_layer_destroy(s_heading); text_layer_destroy(s_page_label); scroll_layer_destroy(s_scroll);
-  if(s_italic_font){fonts_unload_custom_font(s_italic_font);s_italic_font=NULL;}
+  if(s_italic_font){fonts_unload_custom_font(s_italic_font);s_italic_font=NULL;}markdown_reset_metrics();
   s_body=NULL; s_heading=NULL; s_page_label=NULL; s_scroll=NULL;
 }
-static void reader_load(Window *window) {
+static void reader_appear(Window *window){
 #if defined(PBL_TOUCH)
-  window_set_touch_bridge_disabled(window,true);
-  window_attach_recognizer(window,swipe_recognizer_create(notesy_touch_reader_swipe,NULL,SwipeDirection_Up|SwipeDirection_Down));
-  window_attach_recognizer(window,tap_recognizer_create(notesy_touch_reader_tap,NULL));
+  // The firmware widget bridge can select a row without delivering activation.
+  // Own the reader's raw touch stream so tap and swipe have a single dispatcher.
+  app_touch_navigation_enable(false);s_reader_touch_tracking=false;touch_service_subscribe(notesy_reader_touch,NULL);
 #endif
+}
+static void reader_disappear(Window *window){
+#if defined(PBL_TOUCH)
+  s_reader_touch_tracking=false;touch_service_unsubscribe();app_touch_navigation_enable(true);
+#endif
+}
+static void reader_load(Window *window) {
+
   GRect bounds=layer_get_bounds(window_get_root_layer(window));
   s_heading=text_layer_create(GRect(4,0,bounds.size.w-8,s_theme_size+10)); text_layer_set_font(s_heading,fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
   s_scroll=scroll_layer_create(GRect(0,s_theme_size+12,bounds.size.w,bounds.size.h-s_theme_size-33));
@@ -666,7 +688,7 @@ static void open_selected(void){
   snprintf(s_current_id,sizeof(s_current_id),"%s",n->id);snprintf(s_title,sizeof(s_title),"%s",n->title);s_note_parent[0]=0;
   snprintf(s_body_text,sizeof(s_body_text),"Loading…");s_page=0;s_pages=1;
   if(s_reader)window_destroy(s_reader);
-  s_reader=window_create();window_set_window_handlers(s_reader,(WindowHandlers){.load=reader_load,.unload=reader_unload});
+  s_reader=window_create();window_set_window_handlers(s_reader,(WindowHandlers){.load=reader_load,.unload=reader_unload,.appear=reader_appear,.disappear=reader_disappear});
   window_stack_push(s_reader,true);s_loading=true;send_command(2,s_current_id,0,NULL);
 }
 static void refresh_list(void){s_snapshot[0]=0;s_restore_row=0;load_notes(0);}

@@ -15,13 +15,28 @@ static int markdown_char(const char *p,char *out){
   for(int i=1;i<n;i++)if(!p[i]||((unsigned char)p[i]&0xc0)!=0x80){n=1;break;}
   memcpy(out,p,n);out[n]=0;return n;
 }
+static GFont s_width_fonts[4];static uint8_t s_widths[4][95],s_width_next;
+static void markdown_reset_metrics(void){memset(s_width_fonts,0,sizeof(s_width_fonts));memset(s_widths,0,sizeof(s_widths));s_width_next=0;}
 static int markdown_width(const char *glyph,GFont font){
   // Pebble reports an empty box for a space on some fonts.
   if(glyph[0]==' '&&!glyph[1])return s_theme_size/4+1;
+  int slot=-1,key=(unsigned char)glyph[0]-32;
+  if(!glyph[1]&&key>=0&&key<95){
+    for(int i=0;i<4;i++)if(s_width_fonts[i]==font){slot=i;break;}
+    if(slot<0){slot=s_width_next++%4;s_width_fonts[slot]=font;memset(s_widths[slot],0,95);}
+    if(s_widths[slot][key])return s_widths[slot][key];
+  }
   int width=graphics_text_layout_get_content_size(glyph,font,GRect(0,0,512,128),GTextOverflowModeFill,GTextAlignmentLeft).w;
-  return width>0?width:1;
+  width=width>0?width:1;if(slot>=0&&width<=255)s_widths[slot][key]=width;return width;
 }
 static int markdown_layout(GContext *ctx,const RichItem *item,int width,int top){
+  bool plain=item->format==0;
+  for(const char *p=item->text;plain&&*p;p++)if((unsigned char)*p<=16)plain=false;
+  if(plain){
+    GFont font=theme_title_font();
+    if(ctx){graphics_draw_text(ctx,item->text,font,GRect(6,top,width,item->text_height?item->text_height:8192),GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);return item->text_height;}
+    return graphics_text_layout_get_content_size(item->text,font,GRect(0,0,width,8192),GTextOverflowModeWordWrap,GTextAlignmentLeft).h+16;
+  }
   int inset=item->format==7||item->format==8?8:0,x=0,y=0;
   int line=item->format>=1&&item->format<=6?(item->format==1?34:item->format==2?30:24):s_theme_size+10;
   if(item->format>=1&&item->format<=6&&line<s_theme_size+10)line=s_theme_size+10;

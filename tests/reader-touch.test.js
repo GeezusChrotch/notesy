@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{execFileSync}=require('node:child_process');
 test('reader tap focuses a different row, activates on the next tap and respects bounds/loading',()=>{
- const source=fs.readFileSync(path.join(__dirname,'../src/c/main.c'),'utf8'),begin=source.indexOf('static void notesy_touch_reader_tap(const Recognizer *recognizer,RecognizerEvent event){'),end=source.indexOf('\n#endif',begin),body=source.slice(begin,end);
+ const source=fs.readFileSync(path.join(__dirname,'../src/c/main.c'),'utf8'),begin=source.indexOf('static void notesy_reader_tap_at(GPoint point){'),end=source.indexOf('static bool s_reader_touch_tracking',begin),body=source.slice(begin,end);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'notesy-reader-tap-'));try{fs.writeFileSync(path.join(dir,'test.c'),`
 #include <stdbool.h>
 #include <stddef.h>
@@ -24,9 +24,37 @@ static void notesy_rich_selected(MenuLayer*m,MenuIndex*i,void*c){activated=i->ro
 static void open_actions(void*a,void*b){actions++;}
 ${body}
 int main(void){
- point=(GPoint){40,100};notesy_touch_reader_tap(NULL,1);assert(selected==1&&activated==-1);notesy_touch_reader_tap(NULL,1);assert(activated==1);
- activated=-1;point.y=215;notesy_touch_reader_tap(NULL,1);assert(activated==-1);point.y=100;s_loading=true;notesy_touch_reader_tap(NULL,1);assert(activated==-1);s_loading=false;
- enabled=false;notesy_touch_reader_tap(NULL,1);assert(activated==-1);enabled=true;s_rich=false;notesy_touch_reader_tap(NULL,1);assert(actions==1);
+ point=(GPoint){40,100};notesy_reader_tap_at(point);assert(selected==1&&activated==-1);notesy_reader_tap_at(point);assert(activated==1);
+ activated=-1;point.y=215;notesy_reader_tap_at(point);assert(activated==-1);point.y=100;s_loading=true;notesy_reader_tap_at(point);assert(activated==-1);s_loading=false;
+ enabled=false;notesy_reader_tap_at(point);assert(activated==-1);enabled=true;s_rich=false;notesy_reader_tap_at(point);assert(actions==1);
+}
+`);execFileSync('cc',[path.join(dir,'test.c'),'-o',path.join(dir,'test')]);execFileSync(path.join(dir,'test'));}finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+test('raw reader touch rejects drags, supports both swipe directions and ignores covered/loading views',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../src/c/main.c'),'utf8'),begin=source.indexOf('static bool s_reader_touch_tracking'),end=source.indexOf('\n#endif',begin),body=source.slice(begin,end);
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'notesy-raw-touch-'));try{fs.writeFileSync(path.join(dir,'test.c'),`
+#include <stdbool.h>
+#include <stddef.h>
+#include <assert.h>
+typedef struct {int x,y;} GPoint;
+#define GPoint(x,y) ((GPoint){x,y})
+enum {TouchEvent_Touchdown,TouchEvent_PositionUpdate,TouchEvent_Liftoff};
+typedef struct {int type;bool non_navigational;int x,y;} TouchEvent;
+static void *s_reader=(void*)1,*top=(void*)1;static bool s_loading,s_stitch;static int taps,up,down;
+static void *window_stack_get_top_window(void){return top;}
+static void notesy_reader_tap_at(GPoint p){taps++;}
+static void scroll_note(bool d){if(d)down++;else up++;}
+${body}
+static void event(int kind,int x,int y){TouchEvent e={kind,false,x,y};notesy_reader_touch(&e,NULL);}
+int main(void){
+ event(TouchEvent_Liftoff,40,100);assert(!taps);
+ event(TouchEvent_Touchdown,40,100);event(TouchEvent_Liftoff,42,103);assert(taps==1);
+ event(TouchEvent_Touchdown,40,100);event(TouchEvent_PositionUpdate,80,100);event(TouchEvent_Liftoff,40,100);assert(taps==1);
+ event(TouchEvent_Touchdown,40,170);event(TouchEvent_Liftoff,40,60);assert(down==1&&taps==1);
+ event(TouchEvent_Touchdown,40,60);event(TouchEvent_Liftoff,40,170);assert(up==1);
+ event(TouchEvent_Touchdown,40,100);s_loading=true;event(TouchEvent_Liftoff,40,100);s_loading=false;assert(taps==1);
+ event(TouchEvent_Touchdown,40,100);top=NULL;event(TouchEvent_Liftoff,40,100);top=s_reader;assert(taps==1);
+ event(TouchEvent_Touchdown,40,100);TouchEvent ignored={TouchEvent_Liftoff,true,40,100};notesy_reader_touch(&ignored,NULL);assert(taps==1);
 }
 `);execFileSync('cc',[path.join(dir,'test.c'),'-o',path.join(dir,'test')]);execFileSync(path.join(dir,'test'));}finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

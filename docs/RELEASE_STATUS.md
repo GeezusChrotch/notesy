@@ -14,3 +14,7 @@ Release date: 2026-09-06.
 PBW SHA-256: `fc4cd4f2cf70599095437e76083b33ac49c049ab61ae0f6dc27569e28cb3dee8`.
 
 The publisher uploads this exact reviewed package. Documentation-only release updates do not rebuild it. Public source/artwork archives have their own checksums. Pairing, vault state and delivery queues are preserved. See RELEASE_NOTES_1.2.0.md and SORTING_VALIDATION.md.
+
+## Unpublished 1.3.3 candidate
+
+Reader tap activation and link-heavy scrolling improvements are built and emulator-tested. Physical-watch acceptance and Connector deployment are pending. See [validation and exact package hash](READER_TOUCH_PERFORMANCE_VALIDATION.md). The public beta record above remains unchanged.
