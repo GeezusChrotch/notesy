@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-09-07T18:43:18.912521+00:00",
+  "release": "https://github.com/GeezusChrotch/notesy/releases/tag/v1.4.7",
+  "downloads": [
+    {
+      "name": "Notesy-1.4.7.pbw",
+      "sha256": "4de0c32cc86e851fc75bb9c390d3d941976c61ae92162192430e20257b13db03",
+      "bytes": 281886,
+      "status": 200
+    },
+    {
+      "name": "Notesy-1.4.7-source.zip",
+      "sha256": "5834b9bd7f2e5abdd037942772e53289a0b4d4552dcc7fcd2ac57a78222137de",
+      "bytes": 4169002,
+      "status": 200
+    },
+    {
+      "name": "Notesy-1.4.7-store-assets.zip",
+      "sha256": "741e821e5bf801a19cf34130145755aa18201a8ed97b25701b569027f19c40fd",
+      "bytes": 3151973,
+      "status": 200
+    },
+    {
+      "name": "SHA256SUMS",
+      "sha256": "836ab6d6a70ce24db4c4e7e931d29978256732ece2b99784c875008c63a7f9eb",
+      "bytes": 269,
+      "status": 200
+    },
+    {
+      "name": "release-manifest.json",
+      "sha256": "194675c58d6110ba0b07604b55289a6b7d706a085308ed68d701b2db22645dc0",
+      "bytes": 643,
+      "status": 200
+    }
+  ],
+  "installed": true,
+  "taskTextWatchAcceptance": true,
+  "pages": {
+    "url": "https://geezuschrotch.github.io/notesy/",
+    "status": 200,
+    "version": "1.4.7"
+  }
+}
