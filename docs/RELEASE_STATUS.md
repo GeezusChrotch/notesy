@@ -1,7 +1,10 @@
-# Notesy 1.4.4 — public beta release preparation
+# Notesy 1.4.4 — published public beta
 
-Requires Organik Apps Pebble Connector 0.7.0 or later. Release approval was supplied through the release coordinator on 2026-09-07. GitHub/Pages publication is being performed by this task; the coordinator owns the Pebble store dashboard.
+Requires Organik Apps Pebble Connector 0.7.0 or later. Release approval was supplied through the release coordinator on 2026-09-07. GitHub and Pages publication completed on 2026-09-07. The coordinator owns the Pebble store dashboard; this record does not claim a store update.
 
+- [GitHub release](https://github.com/GeezusChrotch/notesy/releases/tag/v1.4.4) is public as a prerelease, targeting commit `5ab771a1cebe910da7d67418832f4864e7da7f65`.
+- All five public assets were anonymously downloaded and verified against their prepared SHA-256 checksums. [Website](https://geezuschrotch.github.io/notesy/) returned HTTP 200 with version 1.4.4. See [publication verification](PUBLICATION_VERIFICATION_1.4.4.json).
+- Connector 0.7.0 was publicly available before Notesy publication.
 - 84 automated tests pass, including the portable shared startup-clamp regression in touch and non-touch modes.
 - Clean Basalt and Emery builds pass; embedded versionLabel is 1.4.4. PBW excludes SDK source maps and developer paths.
 - Reader/formatting/Double Back implementation was verified in earlier candidate emulator/native checks; the shared startup fix was visually checked in the emulator by its owner.
