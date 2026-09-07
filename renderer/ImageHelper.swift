@@ -23,6 +23,27 @@ func output(_ data:Data){
  FileHandle.standardOutput.write(encoded);exit(0)
 }
 guard let data=try? Data(contentsOf:input),data.count<=20*1024*1024 else {fail("Image exceeds the 20 MB limit.")}
+if kind == "pdf-info" || kind.hasPrefix("pdf:") {
+ guard let provider=CGDataProvider(data:data as CFData),let pdf=CGPDFDocument(provider) else {fail("Invalid PDF.")}
+ guard pdf.isUnlocked else {fail("Password-protected PDFs cannot be displayed.")}
+ guard pdf.numberOfPages>0 && pdf.numberOfPages<=1000 else {fail("PDF exceeds the 1000-page preview limit.")}
+ if kind == "pdf-info" {print("{\"pages\":\(pdf.numberOfPages)}");exit(0)}
+ guard let number=Int(kind.dropFirst(4)),number>=1,let page=pdf.page(at:number) else {fail("This PDF page is unavailable.")}
+ let box=page.getBoxRect(.cropBox),rotated=abs(page.rotationAngle)%180 == 90
+ let pw=rotated ? box.height:box.width,ph=rotated ? box.width:box.height
+ guard pw.isFinite && ph.isFinite && pw>0 && ph>0 else {fail("Invalid PDF page dimensions.")}
+ let scale=min(Double(width)/pw,Double(height)/ph),iw=max(1,Int(pw*scale)),ih=max(1,Int(ph*scale))
+ var pixels=[UInt8](repeating:255,count:iw*ih*4)
+ pixels.withUnsafeMutableBytes {raw in
+  guard let ctx=CGContext(data:raw.baseAddress,width:iw,height:ih,bitsPerComponent:8,bytesPerRow:iw*4,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue) else {fail("Could not allocate PDF preview.")}
+  let rect=CGRect(x:0,y:0,width:iw,height:ih)
+  ctx.setFillColor(CGColor(gray:1,alpha:1));ctx.fill(rect)
+  ctx.concatenate(page.getDrawingTransform(.cropBox,rect:rect,rotate:0,preserveAspectRatio:true));ctx.drawPDFPage(page)
+ }
+ let result:[String:Any]=["width":iw,"height":ih,"rgba":Data(pixels).base64EncodedString()]
+ guard let encoded=try? JSONSerialization.data(withJSONObject:result) else {fail("Could not encode PDF preview.")}
+ FileHandle.standardOutput.write(encoded);exit(0)
+}
 if kind=="image" {output(data)}
 NSApplication.shared.setActivationPolicy(.prohibited)
 final class Renderer:NSObject,WKNavigationDelegate,WKScriptMessageHandler {

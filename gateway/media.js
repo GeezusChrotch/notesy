@@ -1,5 +1,5 @@
 'use strict';
-const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto'),{execFile}=require('node:child_process');
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto'),{execFile,execFileSync}=require('node:child_process');
 const assets=process.env.NOTESY_RENDERER|| (fs.existsSync(path.join(__dirname,'renderer'))?path.join(__dirname,'renderer'):path.join(__dirname,'../renderer/dist'));
 const {quantizeImage,normalizeImageMode}=require('./pebble-image.cjs');
 const cache=new Map();
@@ -7,7 +7,7 @@ function error(message,status=400){return Object.assign(new Error(message),{stat
 function resolve(browser,note,reference){
  let ref;try{ref=decodeURIComponent(reference.split('#')[0]);}catch{throw error('Invalid image link.');}
  if(!ref||/^[a-z][a-z\d+.-]*:/i.test(ref)||ref.startsWith('/')||ref.includes('\0'))throw error('Only images stored in this vault can be shown.');
- const extensions=path.extname(ref)?['']:['','.png','.jpg','.jpeg','.webp','.svg','.excalidraw.md','.excalidraw'];
+ const extensions=path.extname(ref)?['']:['','.png','.jpg','.jpeg','.webp','.svg','.excalidraw.md','.excalidraw','.pdf'];
  const parent=path.posix.dirname(note);
  for(const base of [path.posix.normalize(path.posix.join(parent,ref)),ref])for(const ext of extensions){try{return browser.checked(base+ext,false,true);}catch{}}
  // Obsidian also permits shortest unique filenames, independent of attachment folder.
@@ -37,14 +37,36 @@ function drawing(browser,file,data){
  for(const [key,value] of Object.entries(scene.files))if(!value||!/^data:image\/(?:png|jpeg|webp|gif);base64,/.test(value.dataURL||''))delete scene.files[key];
  return Buffer.from(JSON.stringify(scene));
 }
+const pdfCache=new Map();
+function pdfBlocks(browser,note,blocks){
+ return blocks.flatMap(block=>{
+  if(block.kind!=='image'||! /\.pdf(?:#|$)/i.test(block.ref))return [block];
+  try{
+   const data=read(resolve(browser,note,block.ref)),digest=crypto.createHash('sha256').update(data).digest('hex');
+   let pages=pdfCache.get(digest);
+   if(!pages){
+    const temp=fs.mkdtempSync(path.join(os.tmpdir(),'notesy-pdf-'));
+    try{
+     const input=path.join(temp,'input'),helper=path.join(temp,'notesy-image-helper');fs.writeFileSync(input,data,{mode:0o600});fs.copyFileSync(path.join(assets,'notesy-image-helper'),helper);fs.chmodSync(helper,0o700);
+     const info=JSON.parse(execFileSync(helper,[input,'120','100','pdf-info',assets],{timeout:5000,maxBuffer:4096,stdio:['ignore','pipe','pipe']}));
+     pages=info.pages;if(!Number.isInteger(pages)||pages<1||pages>1000)throw error('Invalid PDF page count.');
+     if(pdfCache.size>=24)pdfCache.delete(pdfCache.keys().next().value);pdfCache.set(digest,pages);
+    }finally{fs.rmSync(temp,{recursive:true,force:true});}
+   }
+   const fragment=block.ref.split('#')[1]||'',match=fragment.match(/(?:^|&)page=(\d+)(?:&|$)/i),selected=match?Number(match[1]):null;
+   if(selected!==null&&(selected<1||selected>pages))throw error('This PDF page is unavailable.');
+   return Array.from({length:selected===null?pages:1},(_,i)=>({...block,pdfPage:selected===null?i+1:selected,pdfRevision:digest,text:path.posix.basename(block.ref.split('#')[0])+' · Page '+(selected===null?i+1:selected)+' of '+pages}));
+  }catch(e){return [{kind:'text',text:'PDF: '+(e.status>=400&&e.status<=599?e.message:'Cannot preview this PDF. It may be damaged, password-protected, or exceed the 1000-page limit.')}];}
+ });
+}
 async function render(browser,id,index,revision,width,height,mode){
  mode=normalizeImageMode(mode);
  if(![120,176].includes(width)||height!==(width===120?100:150))throw error('Invalid watch image size.');
  const raw=browser.raw(id);if(crypto.createHash('sha256').update(raw.data).digest('hex')!==revision)throw error('The note changed. Reopen it to load images.',409);
  const parsed=browser.content(id,Math.floor(index/15)),block=parsed.blocks[index%15];if(!block||block.kind!=='image')throw error('This image is no longer in the note.',404);
  const file=resolve(browser,raw.entry.relative,block.ref),ext=path.extname(file).toLowerCase();
- if(!/\.(?:png|jpe?g|webp|gif|heic|tiff?|bmp|svg|excalidraw|md)$/i.test(file))throw error('This embedded file is not a supported picture or drawing.');
- let data=read(file),kind=require('./content').isDrawing(file,data)?'drawing':ext==='.svg'?'svg':'image';if(kind==='drawing')data=drawing(browser,file,data);
+ if(!/\.(?:png|jpe?g|webp|gif|heic|tiff?|bmp|svg|pdf|excalidraw|md)$/i.test(file))throw error('This embedded file is not a supported picture or drawing.');
+ let data=read(file);if(block.pdfRevision&&crypto.createHash('sha256').update(data).digest('hex')!==block.pdfRevision)throw error('The PDF changed. Reopen the note.',409);let kind=ext==='.pdf'?'pdf:'+block.pdfPage:require('./content').isDrawing(file,data)?'drawing':ext==='.svg'?'svg':'image';if(kind==='drawing')data=drawing(browser,file,data);
  const key=crypto.createHash('sha256').update(data).update(width+':'+height+':'+kind+':'+mode).digest('hex');if(cache.has(key))return cache.get(key);
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'notesy-image-')),input=path.join(temp,'input');fs.writeFileSync(input,data,{mode:0o600});
  try{
@@ -59,4 +81,4 @@ async function render(browser,id,index,revision,width,height,mode){
   const value={width:result.width,height:result.height,encoding:'rle-gcolor8',data:Buffer.from(runs).toString('base64')};if(cache.size>=12)cache.delete(cache.keys().next().value);cache.set(key,value);return value;
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 }
-module.exports={render,resolve,drawing};
+module.exports={render,resolve,drawing,pdfBlocks};

@@ -39,7 +39,7 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
       const directory=i<parts.length-1||folder;
       if(stat.isSymbolicLink()||fs.realpathSync(current)!==current||(directory?!stat.isDirectory():!stat.isFile()))throw new Fault(409,'This item is no longer a regular vault file or folder.');
     }
-    if(!folder&&!media&&!/\.(?:md|excalidraw)$/i.test(relative))throw new Fault(400,'Only Markdown notes can be opened.');
+    if(!folder&&!media&&!/\.(?:md|excalidraw|pdf)$/i.test(relative))throw new Fault(400,'Only notes, drawings and PDFs can be opened.');
     return current;
   }
   resolve(id,folder){
@@ -54,12 +54,12 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
   }
   children(directory){
     return fs.readdirSync(this.checked(directory.relative,true),{withFileTypes:true})
-      .filter(e=>!e.name.startsWith('.')&&(e.isDirectory()||(e.isFile()&&/\.(?:md|excalidraw)$/i.test(e.name))))
+      .filter(e=>!e.name.startsWith('.')&&(e.isDirectory()||(e.isFile()&&/\.(?:md|excalidraw|pdf)$/i.test(e.name))))
       .filter(e=>!this.hidden(directory.relative?directory.relative+'/'+e.name:e.name))
       .map(e=>this.remember(directory.relative?directory.relative+'/'+e.name:e.name,e.isDirectory()));
   }
   noteTags(id){
-    const e=this.resolve(id);if(e.folder)return [];
+    const e=this.resolve(id);if(e.folder||/\.pdf$/i.test(e.relative))return [];
     const file=this.checked(e.relative,false),fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
     try{const stat=fs.fstatSync(fd);if(!stat.isFile()||stat.size>8*1024*1024)throw new Fault(413,'A note is too large to index tags (8 MB limit).');
       const data=fs.readFileSync(fd);if(data.length>8*1024*1024)throw new Fault(413,'A note grew beyond the tag indexing limit.');
@@ -123,11 +123,11 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
           if(entry.name.startsWith('.'))continue;
           const relative=folder?folder+'/'+entry.name:entry.name;if(this.hidden(relative))continue;
           if(entry.isDirectory()){directories.push(relative);continue;}
-          if(!entry.isFile()||!/\.(?:md|excalidraw)$/i.test(entry.name))continue;
+          if(!entry.isFile()||!/\.(?:md|excalidraw|pdf)$/i.test(entry.name))continue;
           const title=entry.name.replace(/\.md$/i,'');let rank=score(query,title,folder);
           try{
             const file=this.checked(relative,false);
-            if(!rank){
+            if(!rank&&!/\.pdf$/i.test(relative)){
               const fd=await fs.promises.open(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
               try{const stat=await fd.stat();if(!stat.isFile()||stat.size>1024*1024)continue;
                 const text=await fd.readFile('utf8');this.checked(relative,false);rank=score(query,title,folder,plainText(text));
@@ -158,7 +158,7 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
   read(id,page){const n=this.note(id);return {...n.store.read(n.localId,page),id,parent:this.remember(path.posix.dirname(n.entry.relative)==='.'?'':path.posix.dirname(n.entry.relative),true),pinned:this.index.pins.includes(id)};}
   raw(id){
     const entry=this.resolve(id,false),file=this.checked(entry.relative,false),fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
-    try{const stat=fs.fstatSync(fd);if(!stat.isFile()||stat.size>1024*1024)throw new Fault(413,'This note exceeds the 1 MB watch limit.');const data=fs.readFileSync(fd);if(data.length>1024*1024)throw new Fault(413,'This note exceeds the watch limit.');return {entry,file,data};}finally{fs.closeSync(fd);}
+    try{const limit=/\.pdf$/i.test(entry.relative)?20*1024*1024:1024*1024;const stat=fs.fstatSync(fd);if(!stat.isFile()||stat.size>limit)throw new Fault(413,'This file exceeds the watch limit (1 MB notes, 20 MB PDFs).');const data=fs.readFileSync(fd);if(data.length>limit)throw new Fault(413,'This note exceeds the watch limit.');return {entry,file,data};}finally{fs.closeSync(fd);}
   }
   content(id,page=0){
     const {entry,data}=this.raw(id),revision=hash(data),drawing=require('./content').isDrawing(entry.relative,data);
@@ -166,7 +166,10 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     // Reuse parsing and basename lookup while paging the same unchanged note.
     // Page zero is an explicit reopen/refresh and always discovers fresh targets.
     if(!page||!view||view.revision!==revision||view.expires<Date.now()){
-      const parsed=drawing?{revision,rich:true,blocks:[]}:require('./content').parse(data.toString('utf8'),plainText,pages);
+      const pdf=/\.pdf$/i.test(entry.relative);
+      const parsed=(drawing||pdf)?{revision,rich:true,blocks:[]}:require('./content').parse(data.toString('utf8'),plainText,pages);
+      if(pdf)parsed.blocks=[{kind:'image',ref:path.posix.basename(entry.relative),text:'PDF'}];
+      parsed.blocks=require('./media').pdfBlocks(this,entry.relative,parsed.blocks);
       view={revision,parsed,link:require('./links')(this,entry.relative),expires:Date.now()+30000};
       if(this.contentViews.size>=4)this.contentViews.delete(this.contentViews.keys().next().value);
       this.contentViews.set(id,view);
@@ -182,6 +185,7 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     return {id,title:this.item(id).title,parent:this.remember(parent==='.'?'':parent,true),pinned:this.index.pins.includes(id),rich:true,revision:parsed.revision,offset:page*15,total:blocks.length,blocks:visible};
   }
   task(id,body){
+    if(/\.pdf$/i.test(this.resolve(id,false).relative))throw new Fault(400,'PDF previews are read-only.');
     if(body.vaultId!==this.vaultId||typeof body.checked!=='boolean'||!/^\d{1,8}$/.test(body.taskId||'')||!/^[a-f0-9]{64}$/.test(body.revision||''))throw new Fault(400,'Reload this note before changing a task.');
     this.bind(body,'task',id+'|'+body.taskId+'|'+body.revision+'|'+body.checked);
     const receiptFile=path.join(this.home,hash(body.requestId)+'.json'),receipt=JSON.parse(fs.readFileSync(receiptFile,'utf8'));
@@ -219,8 +223,9 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     const receipt=JSON.parse(fs.readFileSync(path.join(store.receipts,hash(body.requestId)+'.json'),'utf8'));
     result.id=this.remember(e.relative?e.relative+'/'+receipt.filename:receipt.filename,false);this.flush();return result;
   }
-  append(id,body){const raw=this.raw(id);if(require('./content').isDrawing(raw.entry.relative,raw.data))throw new Fault(400,'Create a new note alongside this drawing for dictation.');this.bind(body,'append',id);const e=this.index.entries[id];if(!e||e.folder)throw new Fault(400,'Append is available for notes only.');const parent=path.posix.dirname(e.relative),store=this.store(parent==='.'?'':parent);return {...store.append(hash(path.basename(e.relative)),{...body,vaultId:store.vaultId}),id};}
+  append(id,body){const raw=this.raw(id);if(/\.pdf$/i.test(raw.entry.relative))throw new Fault(400,'Create a new note alongside this PDF for dictation.');if(require('./content').isDrawing(raw.entry.relative,raw.data))throw new Fault(400,'Create a new note alongside this drawing for dictation.');this.bind(body,'append',id);const e=this.index.entries[id];if(!e||e.folder)throw new Fault(400,'Append is available for notes only.');const parent=path.posix.dirname(e.relative),store=this.store(parent==='.'?'':parent);return {...store.append(hash(path.basename(e.relative)),{...body,vaultId:store.vaultId}),id};}
   remove(id,body){
+    if(/\.pdf$/i.test((this.index.entries[id]||{}).relative||''))throw new Fault(400,'Remove PDF attachments in Obsidian.');
     this.bind(body,'delete',id);
     // Resolve the stored path without requiring the already deleted note to exist.
     const e=this.index.entries[id];if(!e||e.folder)throw new Fault(400,'Delete is available for notes only.');
