@@ -1,26 +1,38 @@
 'use strict';
 const crypto=require('node:crypto');
+const md=require('./markdown');
 const hash=v=>crypto.createHash('sha256').update(v).digest('hex');
 // Byte offsets refer to the original Markdown; toggling changes exactly one marker byte.
 function parse(markdown,plainText,pages){
- const blocks=[];let offset=0,fence='',front=false,first=true,paragraph=[];
- const flush=()=>{const text=plainText(paragraph.join('\n'));paragraph=[];if(text)for(const chunk of pages(text,220))blocks.push({kind:'text',text:chunk});};
+ const blocks=[];let offset=0,fence='',front=false,first=true,paragraph=[],format=0;
+ const flush=()=>{
+  const source=paragraph.join('\n').replace(/<!-- stonenotes-append:[a-f0-9]{64} -->/g,'').trim();paragraph=[];
+  const parsed=format===8?{markup:source.replace(/[\x00-\x08\x0b-\x1f]/g,''),text:source,links:[]}:md.inline(source);
+  for(const markup of md.chunks(parsed.markup))blocks.push({kind:'text',text:markup.replace(/[\x01-\x10]/g,''),markup,format});
+  blocks.push(...parsed.links);format=0;
+ };
  for(const full of markdown.match(/[^\n]*\n|[^\n]+$/g)||[]){
   const line=full.replace(/\r?\n$/,'');const clean=line.replace(/^\uFEFF/,'');
   if(first&&clean==='---'){front=true;first=false;offset+=Buffer.byteLength(full);continue;}first=false;
   if(front){if(clean==='---')front=false;offset+=Buffer.byteLength(full);continue;}
+  if(!fence&&paragraph.length===1&&/^\s*(?:===+|---+)\s*$/.test(line)){format=line.trim()[0]==='='?1:2;flush();offset+=Buffer.byteLength(full);continue;}
   const code=line.match(/^\s{0,3}(`{3,}|~{3,})/);
-  if(code){if(!fence)fence=code[1];else if(code[1][0]===fence[0]&&code[1].length>=fence.length)fence='';paragraph.push(line);offset+=Buffer.byteLength(full);continue;}
+  if(code){if(!fence){flush();fence=code[1];format=8;}else if(code[1][0]===fence[0]&&code[1].length>=fence.length){flush();fence='';}else paragraph.push(line);offset+=Buffer.byteLength(full);continue;}
   const task=!fence&&line.match(/^(\s*(?:>\s*)*(?:[-+*]|\d+[.)])\s+\[)([ xX])(\]\s+)(.*)$/);
-  if(task){flush();blocks.push({kind:'task',id:String(offset+Buffer.byteLength(task[1])),checked:task[2]!==' ',text:plainText(task[4])||'(Untitled task)'});}
+  if(task){flush();blocks.push({kind:'task',id:String(offset+Buffer.byteLength(task[1])),checked:task[2]!==' ',text:md.inline(task[4]).text||'(Untitled task)'});blocks.push(...md.inline(task[4]).links);}
   else if(!fence){
-   const pattern=/!\[\[([^\]]+)\]\]|!\[([^\]]*)\]\(\s*(<[^>]+>|(?:[^\s()]|\([^)]*\))+)(?:\s+"[^"]*")?\s*\)/g;let last=0,match,found=false;
-   while((match=pattern.exec(line))){found=true;paragraph.push(line.slice(last,match.index));flush();const wiki=match[1]&&match[1].split('|');const ref=wiki?wiki[0]:match[3].replace(/^<|>$/g,'');blocks.push({kind:'image',ref,text:wiki?wiki[0]:match[2]||ref});last=pattern.lastIndex;}
+   const heading=line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*$/),quote=line.match(/^\s*>\s?(.*)$/),list=line.match(/^\s*([-+*]|\d+[.)])\s+(.+)$/);
+   if(heading||quote||list||/^\s*(?:---+|\*\*\*+|___+)\s*$/.test(line)){
+    flush();format=heading?heading[1].length:quote?7:list?9:10;paragraph.push(heading?heading[2]:quote?quote[1]:list?(/\d/.test(list[1])?list[1]+' ':'• ')+list[2]:'—');flush();offset+=Buffer.byteLength(full);continue;
+   }
+
+   const pattern=/`+[^`]*`+|!\[\[([^\]]+)\]\]|!\[([^\]]*)\]\(\s*(<[^>]+>|(?:[^\s()]|\([^)]*\))+)(?:\s+"[^"]*")?\s*\)/g;let last=0,match,found=false;
+   while((match=pattern.exec(line))){if(match[0][0]==='`')continue;found=true;paragraph.push(line.slice(last,match.index));flush();const wiki=match[1]&&match[1].split('|');const ref=wiki?wiki[0]:match[3].replace(/^<|>$/g,'');blocks.push({kind:'image',ref,text:wiki?wiki[0]:match[2]||ref});last=pattern.lastIndex;}
    if(found)paragraph.push(line.slice(last));else if(!line.trim())flush();else paragraph.push(line);
   }else paragraph.push(line);
   offset+=Buffer.byteLength(full);
  }
- flush();return {revision:hash(Buffer.from(markdown)),blocks,rich:blocks.some(b=>b.kind!=='text')};
+ flush();return {revision:hash(Buffer.from(markdown)),blocks,rich:blocks.some(b=>b.kind!=='text'||b.format||b.markup!==b.text)};
 }
 // Excalidraw's plugin also creates ordinary .md filenames with a frontmatter marker.
 function isDrawing(file,data){

@@ -12,9 +12,12 @@
 typedef struct { char id[65]; char title[112]; char location[96]; bool folder,pinned; } Note;
 static Window *s_main, *s_reader, *s_actions;
 static MenuLayer *s_action_menu,*s_rich_menu;
-typedef struct {char text[241],id[24];uint8_t kind;bool checked;} RichItem;
+typedef struct {char text[241],id[65];uint8_t kind,format;bool checked;} RichItem;
 static RichItem s_rich_items[15];
 static bool s_rich,s_image_loading;static int s_rich_count,s_rich_expected,s_rich_offset,s_rich_total,s_rich_restore,s_rich_scroll;
+typedef struct {char id[65];int page,row,scroll;} NoteTrail;
+static NoteTrail s_note_trail[12];static int s_note_depth,s_link_scroll=-1;
+static char s_link_target[65];static bool s_link_back;
 static char s_revision[65],s_task_id[24];static bool s_task_checked;
 static GBitmap *s_image;static int s_image_index=-1,s_image_bytes,s_image_received,s_image_pixel;
 static char s_image_error[96];
@@ -127,7 +130,9 @@ static void set_status(const char *text) {
   if(s_page_label)text_layer_set_text(s_page_label,s_status);
 }
 static void clear_timeout(void) { if (s_timeout) { app_timer_cancel(s_timeout); s_timeout = NULL; } }
+static void cancel_link(void){if(s_link_target[0]){s_link_target[0]=0;if(s_link_back)s_note_depth++;else if(s_note_depth)s_note_depth--;s_link_back=false;}}
 static void timed_out(void *unused) {
+  cancel_link();
   stop_stitch();s_timeout = NULL; s_loading = false;s_scroll_to_end=false;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}snprintf(s_image_error,sizeof(s_image_error),"No image reply · select to retry");if(s_rich_menu)layer_mark_dirty(menu_layer_get_layer(s_rich_menu));}
   if(s_page_label)text_layer_set_text(s_page_label,"No reply · scroll to retry");
   set_status(s_pending ? "Draft kept · select to retry" : "No reply · double Back for actions");
@@ -135,7 +140,7 @@ static void timed_out(void *unused) {
 static void send_command(int command, const char *id, int page, const char *text) {
   if(command==2)s_saved_reader_dirty=false;
   DictionaryIterator *iter;
-  if (app_message_outbox_begin(&iter) != APP_MSG_OK) { stop_stitch();s_loading=false;set_status("Phone busy · please retry"); return; }
+  if (app_message_outbox_begin(&iter) != APP_MSG_OK) { cancel_link();stop_stitch();s_loading=false;set_status("Phone busy · please retry"); return; }
   dict_write_int(iter, MESSAGE_KEY_COMMAND, &command, sizeof(command), true);
   dict_write_uint32(iter, MESSAGE_KEY_REQUEST, ++s_request);
   dict_write_int(iter, MESSAGE_KEY_PAGE, &page, sizeof(page), true);
@@ -157,7 +162,7 @@ static void send_command(int command, const char *id, int page, const char *text
   if (id) dict_write_cstring(iter, MESSAGE_KEY_NOTE_ID, id);
   if (text) dict_write_cstring(iter, MESSAGE_KEY_TEXT, text);
   if(command==3&&s_draft_target[0])dict_write_cstring(iter,MESSAGE_KEY_TARGET_ID,s_draft_target);
-  if (app_message_outbox_send() != APP_MSG_OK) { stop_stitch();s_loading=false;set_status("Phone unavailable · draft kept"); return; }
+  if (app_message_outbox_send() != APP_MSG_OK) { cancel_link();stop_stitch();s_loading=false;set_status("Phone unavailable · draft kept"); return; }
   clear_timeout(); s_timeout = app_timer_register(18000, timed_out, NULL);
 }
 static void load_notes(int offset) {
@@ -421,7 +426,11 @@ static void long_press(ClickRecognizerRef recognizer,void *context){
 }
 static void back_click(ClickRecognizerRef recognizer,void *context){
   if(s_stitch){stop_stitch();set_status(s_pending?"Stitch stopped · last section pending":"Stitch finished · sections saved");return;}
-  if(s_body){window_stack_pop(true);if(!s_snapshot[0])refresh_list();return;}
+  if(s_body){
+    if(s_link_target[0]){cancel_link();++s_request;clear_timeout();s_loading=false;set_status("Link cancelled");return;}
+    if(s_note_depth){NoteTrail *trail=&s_note_trail[--s_note_depth];snprintf(s_link_target,sizeof(s_link_target),"%s",trail->id);s_link_back=true;s_rich_restore=trail->row;s_link_scroll=trail->scroll;s_loading=true;image_clear();send_command(2,s_link_target,trail->page,NULL);return;}
+    window_stack_pop(true);if(!s_snapshot[0])refresh_list();return;
+  }
   if(s_tag_picker||(!s_search&&s_sort==3)){
     bool was_picker=s_tag_picker;s_tag_picker=!was_picker;if(was_picker)s_sort=0;s_tag[0]=0;s_snapshot[0]=0;s_count=0;s_offset=0;s_restore_row=1;load_notes(0);return;
   }
@@ -508,14 +517,14 @@ static void open_actions(ClickRecognizerRef recognizer,void *context){
 static void show_capture_choices(void){open_actions(NULL,NULL);s_capture_choices=true;if(s_action_menu)menu_layer_reload_data(s_action_menu);}
 static void image_clear(void){if(s_image){gbitmap_destroy(s_image);s_image=NULL;}s_image_loading=false;s_image_index=-1;s_image_error[0]=0;}
 static uint16_t rich_rows(MenuLayer *menu,uint16_t section,void *context){return s_rich_count?s_rich_count:1;}
+#include "markdown.h"
 static int rich_text_height(MenuLayer *menu,const RichItem *item){
   int width=layer_get_bounds(menu_layer_get_layer(menu)).size.w-12;
-  GSize size=graphics_text_layout_get_content_size(item->text,theme_title_font(),GRect(0,0,width,8192),GTextOverflowModeWordWrap,GTextAlignmentLeft);
-  return size.h+16;
+  return markdown_layout(NULL,item,width,0);
 }
 static int16_t rich_height(MenuLayer *menu,MenuIndex *index,void *context){
   if(index->row>=s_rich_count){return 64;}RichItem *item=&s_rich_items[index->row];
-  if(item->kind==1)return s_theme_size+24;
+  if(item->kind==1||item->kind==3||item->kind==4)return s_theme_size+40;
   // Keep geometry stable while a preview loads, fails, or is evicted for another image.
   if(item->kind==2)return IMAGE_HEIGHT+34;
   int height=rich_text_height(menu,item),viewport=layer_get_bounds(menu_layer_get_layer(menu)).size.h;
@@ -537,7 +546,10 @@ static void rich_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *con
     graphics_draw_text(ctx,item->text,fonts_get_system_font(FONT_KEY_GOTHIC_14),GRect(6,0,bounds.size.w-12,22),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
     if(s_image_index==s_rich_offset+index->row&&s_image&&!s_image_loading){GRect image=gbitmap_get_bounds(s_image);graphics_draw_bitmap_in_rect(ctx,s_image,GRect((bounds.size.w-image.size.w)/2,26,image.size.w,image.size.h));}
     else graphics_draw_text(ctx,s_image_index==s_rich_offset+index->row?(s_image_error[0]?s_image_error:"Loading image…"):"Select to show image",fonts_get_system_font(FONT_KEY_GOTHIC_18),GRect(6,34,bounds.size.w-12,bounds.size.h-38),GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);
-  }else graphics_draw_text(ctx,item->text,theme_title_font(),GRect(6,4-(selected?s_rich_scroll:0),bounds.size.w-12,rich_text_height(s_rich_menu,item)-8),GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);
+  }else if(item->kind==3||item->kind==4){
+    draw_menu_title(ctx,cell,item->text,theme_title_font(),GRect(6,0,bounds.size.w-12,s_theme_size+10));
+    graphics_draw_text(ctx,item->kind==3?"Open linked note >":"Link unavailable",fonts_get_system_font(FONT_KEY_GOTHIC_14),GRect(6,s_theme_size+10,bounds.size.w-12,22),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
+  }else {graphics_context_set_stroke_color(ctx,selected?s_selection_text:s_foreground);markdown_layout(ctx,item,bounds.size.w-12,4-(selected?s_rich_scroll:0));}
 }
 static void rich_selection(MenuLayer *menu,MenuIndex next,MenuIndex previous,void *context){
   marquee_reset();if(s_loading||next.row>=s_rich_count)return;
@@ -572,6 +584,12 @@ static void rich_move(bool down){
 static void rich_select(void){
   if(s_loading||!s_rich_menu){return;}int row=menu_layer_get_selected_index(s_rich_menu).row;if(row>=s_rich_count)return;RichItem *item=&s_rich_items[row];
   if(item->kind==2){image_clear();rich_selection(s_rich_menu,MenuIndex(0,row),MenuIndex(0,row),NULL);return;}
+  if(item->kind==4){set_status(item->text);return;}
+  if(item->kind==3){
+    if(s_note_depth>=12){set_status("Back through links before opening more");return;}
+    NoteTrail *trail=&s_note_trail[s_note_depth++];snprintf(trail->id,sizeof(trail->id),"%s",s_current_id);trail->page=s_page;trail->row=row;trail->scroll=s_rich_scroll;
+    snprintf(s_link_target,sizeof(s_link_target),"%s",item->id);s_link_back=false;s_rich_restore=0;s_link_scroll=-1;s_loading=true;image_clear();set_status("Opening linked note…");send_command(2,s_link_target,0,NULL);return;
+  }
   if(item->kind!=1){open_actions(NULL,NULL);return;}
   s_task_checked=!item->checked;snprintf(s_task_id,sizeof(s_task_id),"%s",item->id);
   char operation[96];snprintf(operation,sizeof(operation),"task-%lu-%lu",(unsigned long)time(NULL),(unsigned long)rand());
@@ -594,8 +612,9 @@ static void rich_enable(void){
   menu_layer_set_normal_colors(s_rich_menu,s_background,s_foreground);menu_layer_set_highlight_colors(s_rich_menu,s_highlight,s_selection_text);window_set_click_config_provider(s_reader,reader_clicks);
 }
 static void reader_unload(Window *window) {
-  s_loading=false; ++s_request; clear_timeout();image_clear();marquee_stop();s_rich=false;s_rich_count=0;s_rich_restore=0;if(s_rich_menu){menu_layer_destroy(s_rich_menu);s_rich_menu=NULL;}
+  s_note_depth=0;s_link_scroll=-1;s_link_target[0]=0;s_loading=false; ++s_request; clear_timeout();image_clear();marquee_stop();s_rich=false;s_rich_count=0;s_rich_restore=0;if(s_rich_menu){menu_layer_destroy(s_rich_menu);s_rich_menu=NULL;}
   text_layer_destroy(s_body); text_layer_destroy(s_heading); text_layer_destroy(s_page_label); scroll_layer_destroy(s_scroll);
+  if(s_italic_font){fonts_unload_custom_font(s_italic_font);s_italic_font=NULL;}
   s_body=NULL; s_heading=NULL; s_page_label=NULL; s_scroll=NULL;
 }
 static void reader_load(Window *window) {
@@ -627,7 +646,7 @@ static void open_selected(void){
     Location *loc=&s_history[s_depth++];snprintf(loc->id,sizeof(loc->id),"%s",s_folder);snprintf(loc->title,sizeof(loc->title),"%s",s_folder_title);snprintf(loc->snapshot,sizeof(loc->snapshot),"%s",s_snapshot);loc->offset=s_offset;loc->row=menu_layer_get_selected_index(s_menu).row;
     snprintf(s_folder,sizeof(s_folder),"%s",n->id);snprintf(s_folder_title,sizeof(s_folder_title),"%s",n->title);s_count=0;s_total=0;s_offset=0;refresh_list();return;
   }
-  s_delete_id[0]=0;s_scroll_to_end=false;s_note_pinned=n->pinned;
+  s_note_depth=0;s_link_scroll=-1;s_link_target[0]=0;s_delete_id[0]=0;s_scroll_to_end=false;s_note_pinned=n->pinned;
   snprintf(s_current_id,sizeof(s_current_id),"%s",n->id);snprintf(s_title,sizeof(s_title),"%s",n->title);s_note_parent[0]=0;
   snprintf(s_body_text,sizeof(s_body_text),"Loading…");s_page=0;s_pages=1;
   if(s_reader)window_destroy(s_reader);
@@ -661,7 +680,7 @@ static void perform(int action){
   if(action==11){s_tag_picker=false;start_search();return;}
   if(action==5){open_actions(NULL,NULL);return;}
   if(action==6)return;
-  if(action==7){s_loading=false;if(s_body){s_page=0;s_loading=true;send_command(2,s_current_id,0,NULL);}else refresh_list();return;}
+  if(action==7){cancel_link();s_loading=false;if(s_body){s_page=0;s_loading=true;send_command(2,s_current_id,0,NULL);}else refresh_list();return;}
   if(s_loading){set_status("Please wait for the current request");return;}
   if(action==1){dictate();return;}
   if(action==12){dictate_to("",s_body?s_note_parent:s_folder,true);return;}
@@ -723,17 +742,18 @@ static void inbox(DictionaryIterator *iter, void *context) {
     int row=s_restore_row;if(row>s_count)row=s_count;if(row<0)row=0;
     menu_layer_set_selected_index(s_menu,MenuIndex(0,row),row?MenuRowAlignCenter:MenuRowAlignTop,false);s_restoring_list=false;
   } else if(kind==12&&s_body){
+    if(s_link_target[0]){snprintf(s_current_id,sizeof(s_current_id),"%s",s_link_target);s_link_target[0]=0;s_link_back=false;}
     rich_enable();s_loading=true;s_rich_count=0;memset(s_rich_items,0,sizeof(s_rich_items));
     Tuple *count=dict_find(iter,MESSAGE_KEY_COUNT),*offset=dict_find(iter,MESSAGE_KEY_PAGE),*total=dict_find(iter,MESSAGE_KEY_TOTAL),*revision=dict_find(iter,MESSAGE_KEY_REVISION),*parent=dict_find(iter,MESSAGE_KEY_PARENT_ID),*pinned=dict_find(iter,MESSAGE_KEY_PINNED);
     s_rich_expected=count?count->value->int32:0;if(s_rich_expected<0||s_rich_expected>15)s_rich_expected=0;
     s_rich_offset=offset?offset->value->int32:0;s_page=s_rich_offset/15;s_rich_total=total?total->value->int32:0;
     if(revision){snprintf(s_revision,sizeof(s_revision),"%s",revision->value->cstring);}if(parent)snprintf(s_note_parent,sizeof(s_note_parent),"%s",parent->value->cstring);if(title)snprintf(s_title,sizeof(s_title),"%s",title->value->cstring);s_note_pinned=pinned&&pinned->value->int32;
   } else if(kind==13&&s_rich){
-    Tuple *index=dict_find(iter,MESSAGE_KEY_INDEX),*item=dict_find(iter,MESSAGE_KEY_ITEM_ID),*entry=dict_find(iter,MESSAGE_KEY_ENTRY_KIND),*checked=dict_find(iter,MESSAGE_KEY_CHECKED);int i=index?index->value->int32:-1;
-    if(i>=0&&i<s_rich_expected&&text){snprintf(s_rich_items[i].text,sizeof(s_rich_items[i].text),"%s",text->value->cstring);if(item)snprintf(s_rich_items[i].id,sizeof(s_rich_items[i].id),"%s",item->value->cstring);s_rich_items[i].kind=entry?entry->value->int32:0;s_rich_items[i].checked=checked&&checked->value->int32;}
+    Tuple *index=dict_find(iter,MESSAGE_KEY_INDEX),*item=dict_find(iter,MESSAGE_KEY_ITEM_ID),*entry=dict_find(iter,MESSAGE_KEY_ENTRY_KIND),*checked=dict_find(iter,MESSAGE_KEY_CHECKED),*format=dict_find(iter,MESSAGE_KEY_FORMAT);int i=index?index->value->int32:-1;
+    if(i>=0&&i<s_rich_expected&&text){snprintf(s_rich_items[i].text,sizeof(s_rich_items[i].text),"%s",text->value->cstring);if(item)snprintf(s_rich_items[i].id,sizeof(s_rich_items[i].id),"%s",item->value->cstring);s_rich_items[i].format=format?format->value->int32:0;s_rich_items[i].kind=entry?entry->value->int32:0;s_rich_items[i].checked=checked&&checked->value->int32;}
   } else if(kind==14&&s_rich){
     clear_timeout();s_loading=false;for(int i=0;i<s_rich_expected;i++){if(!s_rich_items[i].id[0]){set_status("Note interrupted · refresh to retry");return;}}s_rich_count=s_rich_expected;marquee_reset();menu_layer_reload_data(s_rich_menu);
-    int row=s_rich_restore;if(row>=s_rich_count)row=s_rich_count-1;if(row<0)row=0;bool forward=s_rich_restore==0;s_rich_restore=0;rich_focus(row,forward);rich_selection(s_rich_menu,MenuIndex(0,row),MenuIndex(0,row),NULL);text_layer_set_text(s_page_label,"Double Back: actions");
+    int row=s_rich_restore;if(row>=s_rich_count)row=s_rich_count-1;if(row<0)row=0;bool forward=s_rich_restore==0;s_rich_restore=0;rich_focus(row,forward);if(s_link_scroll>=0){int max=rich_overflow(row);s_rich_scroll=s_link_scroll>max?max:s_link_scroll;s_link_scroll=-1;}rich_selection(s_rich_menu,MenuIndex(0,row),MenuIndex(0,row),NULL);text_layer_set_text(s_page_label,"Double Back: actions");
   } else if(kind==15&&s_rich){
     clear_timeout();s_loading=false;Tuple *item=dict_find(iter,MESSAGE_KEY_ITEM_ID),*checked=dict_find(iter,MESSAGE_KEY_CHECKED),*revision=dict_find(iter,MESSAGE_KEY_REVISION);
     if(item)for(int i=0;i<s_rich_count;i++)if(strcmp(s_rich_items[i].id,item->value->cstring)==0)s_rich_items[i].checked=checked&&checked->value->int32;
@@ -750,6 +770,7 @@ static void inbox(DictionaryIterator *iter, void *context) {
   } else if(kind==18&&s_rich&&s_image_loading&&s_image){
     clear_timeout();GRect bounds=gbitmap_get_bounds(s_image);if(s_image_received!=s_image_bytes||s_image_pixel!=bounds.size.w*bounds.size.h){image_clear();set_status("Image interrupted · select to retry");return;}s_image_loading=false;text_layer_set_text(s_page_label,"Double Back: actions");layer_mark_dirty(menu_layer_get_layer(s_rich_menu));
   } else if(kind==4&&s_body) {
+    if(s_link_target[0]){snprintf(s_current_id,sizeof(s_current_id),"%s",s_link_target);s_link_target[0]=0;s_link_back=false;}
     if(s_rich){s_rich=false;image_clear();if(s_rich_menu){menu_layer_destroy(s_rich_menu);s_rich_menu=NULL;}layer_set_hidden(text_layer_get_layer(s_heading),false);layer_set_hidden(scroll_layer_get_layer(s_scroll),false);}
 
     clear_timeout();s_loading=false;Tuple *page=dict_find(iter,MESSAGE_KEY_PAGE),*count=dict_find(iter,MESSAGE_KEY_COUNT);
@@ -802,12 +823,12 @@ static void inbox(DictionaryIterator *iter, void *context) {
     if(kind==7&&!s_count&&!s_body&&!s_loading)refresh_list();
   } else if(kind==5||kind==9) {
     stop_stitch();
-    if(kind==9){clear_timeout();s_loading=false;s_snapshot[0]=0;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}if(text)snprintf(s_image_error,sizeof(s_image_error),"%s",text->value->cstring);if(s_rich_menu)layer_mark_dirty(menu_layer_get_layer(s_rich_menu));}}
+    if(kind==9){cancel_link();clear_timeout();s_loading=false;s_snapshot[0]=0;if(s_image_loading){s_image_loading=false;if(s_image){gbitmap_destroy(s_image);s_image=NULL;}if(text)snprintf(s_image_error,sizeof(s_image_error),"%s",text->value->cstring);if(s_rich_menu)layer_mark_dirty(menu_layer_get_layer(s_rich_menu));}}
     if(text)set_status(text->value->cstring);
     if(kind==9&&s_body){s_scroll_to_end=false;text_layer_set_text(s_page_label,s_status);}
   }
 }
-static void outbox_failed(DictionaryIterator *iter, AppMessageResult reason, void *context) { stop_stitch();clear_timeout();s_loading=false;set_status(s_pending?"Draft kept · select to retry":"Phone unavailable · retry"); }
+static void outbox_failed(DictionaryIterator *iter, AppMessageResult reason, void *context) { cancel_link(); stop_stitch();clear_timeout();s_loading=false;set_status(s_pending?"Draft kept · select to retry":"Phone unavailable · retry"); }
 static void main_load(Window *window) {
 #if defined(PBL_TOUCH)
   window_set_touch_bridge_disabled(window,true);

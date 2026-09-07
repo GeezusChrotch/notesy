@@ -14,9 +14,9 @@ import png
 ROOT=Path(__file__).resolve().parents[1]
 fixture=subprocess.Popen(['node',str(ROOT/'tests/emulator-fixture.js')],stdout=subprocess.PIPE,text=True)
 info=json.loads(fixture.stdout.readline());base='http://127.0.0.1:'+str(info['port'])
-pebble=PebbleConnection(ManagedEmulatorTransport('emery'));pebble.connect();pebble.run_async()
+pebble=PebbleConnection(ManagedEmulatorTransport(os.environ.get('WATCH_TEST_PLATFORM','emery')));pebble.connect();pebble.run_async()
 service=AppMessageService(pebble);app=uuid.UUID('b9270b92-5e0e-491b-9993-165f849d7250')
-saved_captures=[];hold_receipts=[False]
+saved_captures=[];hold_receipts=[False];reject_note=[False]
 hold_reply=[0];reply_ready=threading.Event();release_reply=threading.Event();read_results=[]
 incoming=queue.Queue();calls=[];failures=[];acks=set();lock=threading.Lock();done=threading.Event()
 service.register_handler('appmessage',lambda tx,u,data:incoming.put(data) if u==app else None)
@@ -46,13 +46,15 @@ def worker():
     for i,n in enumerate(v['items']):send({1:2,2:seq,8:i,3:n['id'],4:n['title'],5:n.get('location',''),20:int(n['folder']),21:int(n['pinned'])})
     send({1:3,2:seq})
    elif cmd==2:
+    if reject_note[0]:
+     reject_note[0]=False;send({1:9,2:seq,5:'Fixture linked note unavailable'});continue
     v=http(('/v3/notes/' if m.get(25)==3 else '/v2/notes/')+m[3]+'?page='+str(m.get(6,0)))
     read_results.append(v)
     if hold_reply[0]==cmd:
      hold_reply[0]=0;reply_ready.set();assert release_reply.wait(8);release_reply.clear()
     if v.get('rich'):
      send({1:12,2:seq,4:v['title'],19:v['parent'],21:int(v['pinned']),28:v['revision'],6:v['offset'],23:v['total'],7:len(v['blocks'])})
-     for i,b in enumerate(v['blocks']):send({1:13,2:seq,8:i,29:b['id'],5:b['text'],20:{'text':0,'task':1,'image':2}[b['kind']],30:int(b.get('checked',False))})
+     for i,b in enumerate(v['blocks']):send({1:13,2:seq,8:i,29:b.get('target',b['id']),5:b.get('markup',b['text']),36:b.get('format',0),20:{'text':0,'task':1,'image':2,'link':3 if b.get('target') else 4}[b['kind']],30:int(b.get('checked',False))})
      send({1:14,2:seq})
     else:send({1:4,2:seq,4:v['title'],5:v['text'],6:v['page'],7:v['pages'],19:v['parent'],21:int(v['pinned'])})
    elif cmd==8:
@@ -89,6 +91,18 @@ def double_back():
  settle()
 def shot(name):
  png.from_array(Screenshot(pebble).grab_image(),'RGB;8').save(str(ROOT/'build'/name))
+def link_checks():
+ settings();click('down');click('select');assert read_results[-1]['title']=='Project plan';shot('markdown-heading.png')
+ click('down');shot('markdown-emphasis.png');click('down');shot('markdown-link.png');click('select')
+ assert read_results[-1]['title']=='Linked';shot('markdown-linked-note.png')
+ click('back');assert read_results[-1]['title']=='Project plan';shot('markdown-back.png')
+ reject_note[0]=True;click('select');assert read_results[-1]['title']=='Project plan','Failed link replaced the source note'
+ click('select');assert read_results[-1]['title']=='Linked','Back did not restore the selected link'
+ reject_note[0]=True;click('back');assert read_results[-1]['title']=='Linked','Failed Back changed the displayed note'
+ click('back');assert read_results[-1]['title']=='Project plan','Failed Back lost the note history'
+ click('down');shot('markdown-quote.png');click('down');click('down');click('select')
+ assert calls[-1][0]==8,'Task checkbox stopped working after link navigation'
+ print('PASS: formatted reader, link open, Back restores link selection, repeat open, task after links',flush=True)
 def rich_checks():
  settings();shot('rich-root.png');click('down');click('select');assert calls[-1][0]==2 and calls[-1][25]==3;shot('rich-tasks.png')
  click('down');click('select');assert calls[-1][0]==8 and calls[-1][30]==1;shot('rich-task-checked.png')
@@ -271,7 +285,8 @@ def refresh_checks():
  print('PASS: append confirmation during reader loading is retained and refreshes the open note',flush=True)
 
 try:
- if os.environ.get('WATCH_TEST_REFRESH_ONLY'):refresh_checks()
+ if os.environ.get('WATCH_TEST_LINKS_ONLY'):link_checks()
+ elif os.environ.get('WATCH_TEST_REFRESH_ONLY'):refresh_checks()
  elif os.environ.get('WATCH_TEST_STITCH_ONLY') or os.environ.get('WATCH_TEST_STITCH_STOP_ONLY'):stitch_checks()
  elif os.environ.get('WATCH_TEST_SCROLL_ONLY'):scroll_checks()
  elif os.environ.get('WATCH_TEST_RICH_ONLY'):rich_checks()

@@ -112,3 +112,9 @@ test('watch sorting persists after success and scoped tag pages use a separate s
  p.handlers.appmessage({payload:{COMMAND:10,API:2,REQUEST:302,FOLDER_ID:c.root,PAGE:14,SNAPSHOT:'tagsnap'}});
  assert.match(p.requests[1].url,/\/v3\/tags\?folder=/);assert.match(p.requests[1].url,/offset=14&snapshot=tagsnap/);assert.equal(JSON.parse(p.data['stonenotes.config']).sort,2);
 });
+test('phone transports Markdown controls, heading levels and full opaque linked-note IDs',()=>{
+ const p=phone(),c={...config,browserId:'b'.repeat(64),root:'c'.repeat(64)};p.handlers.webviewclosed({response:encodeURIComponent(JSON.stringify(c))});
+ p.handlers.appmessage({payload:{COMMAND:2,API:3,REQUEST:12,NOTE_ID:'d'.repeat(64)}});
+ const target='a'.repeat(64);p.requests[0].status=200;p.requests[0].responseText=JSON.stringify({rich:true,title:'Source',parent:c.root,revision:'e'.repeat(64),offset:0,total:3,blocks:[{kind:'text',id:'0',text:'Bold',markup:'\x02Bold\x01',format:1},{kind:'link',id:'1',text:'Alias',target},{kind:'link',id:'2',text:'Missing',error:'Linked note is missing or hidden'}]});p.requests[0].onload();
+ const rows=p.messages.filter(m=>m.TYPE===13);assert.equal(rows[0].TEXT,'\x02Bold\x01');assert.equal(rows[0].FORMAT,1);assert.equal(rows[1].ITEM_ID,target);assert.equal(rows[1].ENTRY_KIND,3);assert.equal(rows[1].TEXT,'Alias');assert.equal(rows[2].ENTRY_KIND,4);assert.match(rows[2].TEXT,/missing/);
+});

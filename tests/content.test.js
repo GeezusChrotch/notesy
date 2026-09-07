@@ -55,3 +55,31 @@ test('rich content, hidden folders, task editing and media endpoints require pai
  const changed=await(await fetch(base+'/v3/notes/'+id+'/task',{headers,method:'POST',body:JSON.stringify(body)})).json();assert.equal(changed.saved,true);
  assert.equal((await fetch(base+'/v3/hidden',{headers,method:'POST',body:JSON.stringify({vaultId:'other',hidden:[]})})).status,409);
 });
+test('Markdown preserves headings, emphasis, code, list numbers, and selectable link labels without executing anything',()=>{
+ const input='# Big\n## Medium\n\nNormal **bold** and *italic* and ~~old~~ with `a_b` and [[Folder/Note#Heading|Friendly]].\n\n> Quoted\n\n3. Third\n\n```md\n[[Not a link]] **literal**\n```\n\n`![[Not an image]]`\n\nSetext\n===\n';
+ const v=parse(input,plainText,pages);assert.ok(v.rich);assert.deepEqual(v.blocks.filter(b=>b.format&&b.format<=6).map(b=>b.format),[1,2,1]);
+ const para=v.blocks.find(b=>b.text.startsWith('Normal'));assert.equal(para.text,'Normal bold and italic and old with a_b and Friendly.');assert.match(para.markup,/\x02bold\x01/);assert.match(para.markup,/\x03italic\x01/);
+ assert.deepEqual(v.blocks.filter(b=>b.kind==='link').map(b=>[b.ref,b.text]),[['Folder/Note#Heading','Friendly']]);assert.equal(v.blocks.filter(b=>b.kind==='image').length,0);
+ assert.ok(v.blocks.some(b=>b.format===8&&b.text==='[[Not a link]] **literal**'));assert.ok(v.blocks.some(b=>b.text==='3. Third'));
+});
+test('long styled UTF-8 paragraphs preserve every character and restore emphasis across watch chunks',()=>{
+ const input='**'+('café 🐈 '.repeat(180))+'**';const blocks=parse(input,plainText,pages).blocks;
+ assert.equal(blocks.map(b=>b.text).join(''),'café 🐈 '.repeat(180));for(const b of blocks){assert.ok(Buffer.byteLength(b.markup)<=220);assert.ok(b.markup.startsWith('\x02'));assert.ok(!b.text.includes('\ufffd'));}
+});
+test('note links resolve wiki, relative, percent-encoded, unique names and anchors, and survive a Connector restart',t=>{
+ const f=fixture(t),target=f.add('Folder/Target note.md','# Heading\nHello'),source=f.add('Folder/Source.md','[[Target note|Alias]]\n[Relative](Target%20note.md#Heading)\n[[#Local]]\n[[Remote]]'),remote=f.add('Elsewhere/Remote.md');
+ // Deliberately remove discovered IDs: resolution must find ordinary Obsidian files.
+ delete f.b.index.entries[target];delete f.b.index.entries[remote];
+ const links=f.b.content(source).blocks.filter(b=>b.kind==='link');assert.deepEqual(links.map(b=>b.target),[target,target,source,remote]);assert.equal(links[0].text,'Alias');
+ assert.equal(makeServer(f.options).browser.content(target).title,'Target note');
+});
+test('missing, ambiguous, hidden, external and escaping links never open an arbitrary file or create a note',t=>{
+ const f=fixture(t);f.add('One/Duplicate.md');f.add('Two/Duplicate.md');f.add('Private/Secret.md');f.add('Visible.md');
+ f.b.setHidden({vaultId:f.b.vaultId,hidden:['Private']});fs.symlinkSync(path.join(f.vault,'Visible.md'),path.join(f.vault,'Symlink.md'));
+ const id=f.add('Source.md','[[Duplicate]]\n[[Private/Secret]]\n[[Missing]]\n[Web](https://example.com)\n[Escape](../../outside.md)\n[[Symlink]]');
+ const before=fs.readdirSync(f.vault),links=f.b.content(id).blocks.filter(b=>b.kind==='link');assert.equal(links.length,6);assert.ok(links.every(b=>!b.target&&b.error));assert.match(links[0].error,/Ambiguous/);assert.deepEqual(fs.readdirSync(f.vault),before);
+});
+test('task rows with note links retain exact byte markers and images keep stable block indices',t=>{
+ const f=fixture(t);f.add('Target.md');const id=f.add('Source.md','- [ ] Read [[Target]]\n\n![[photo.png]]\n\n'+Array.from({length:25},()=> '[[Target]]').join('\n'));
+ const v=f.b.content(id);assert.equal(v.blocks[0].kind,'task');assert.equal(v.blocks[1].kind,'link');assert.equal(v.blocks[2].kind,'image');assert.equal(v.blocks[2].id,'2');assert.ok(f.b.content(id,1).blocks.some(b=>b.target));
+});

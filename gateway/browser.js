@@ -164,9 +164,12 @@ module.exports=(NoteStore,Fault,hash,atomicJSON,shortText,plainText,pages)=>clas
     const {entry,data}=this.raw(id),drawing=require('./content').isDrawing(entry.relative,data),parsed=drawing?{revision:hash(data),rich:true,blocks:[]}:require('./content').parse(data.toString('utf8'),plainText,pages);
     if(drawing){parsed.rich=true;parsed.blocks=[{kind:'image',ref:path.posix.basename(entry.relative),text:'Drawing'}];}
     if(!parsed.rich)return {...this.read(id,page),rich:false};
+    const link=require('./links')(this,entry.relative);
     const parent=path.posix.dirname(entry.relative),blocks=parsed.blocks.map((b,i)=>({...b,id:b.kind==='task'?b.id:String(i),text:shortText(b.text,220)}));
     if(page*15>=blocks.length&&page)throw new Fault(409,'The note changed. Reopen it.');
-    return {id,title:this.item(id).title,parent:this.remember(parent==='.'?'':parent,true),pinned:this.index.pins.includes(id),rich:true,revision:parsed.revision,offset:page*15,total:blocks.length,blocks:blocks.slice(page*15,page*15+15)};
+    const visible=blocks.slice(page*15,page*15+15).map(b=>b.kind==='link'?{...b,...link(b)}:b);
+    if(visible.some(b=>b.target))this.flush();
+    return {id,title:this.item(id).title,parent:this.remember(parent==='.'?'':parent,true),pinned:this.index.pins.includes(id),rich:true,revision:parsed.revision,offset:page*15,total:blocks.length,blocks:visible};
   }
   task(id,body){
     if(body.vaultId!==this.vaultId||typeof body.checked!=='boolean'||!/^\d{1,8}$/.test(body.taskId||'')||!/^[a-f0-9]{64}$/.test(body.revision||''))throw new Fault(400,'Reload this note before changing a task.');

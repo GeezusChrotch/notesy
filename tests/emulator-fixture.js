@@ -14,9 +14,13 @@ if(process.env.WATCH_TEST_RICH_ONLY){
 if(process.env.WATCH_TEST_SCROLL_ONLY){
  fs.mkdirSync(path.join(vault,'Assets'));
  for(const [name,width,height] of [['Wide',400,80],['Tall',80,400]])fs.writeFileSync(path.join(vault,'Assets',name+'.svg'),`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="red"/></svg>`);
- fs.writeFileSync(path.join(vault,'Projects','Project plan.md'),'START This long paragraph must be readable from beginning to end, even with the largest font. Scroll through every line before advancing to the checkbox. Nothing after the pictures should disappear. END\n\n- [ ] After paragraph\n![[Assets/Wide.svg]]\n![[Assets/Tall.svg]]\n- [ ] After pictures');
+ fs.writeFileSync(path.join(vault,'Projects','Project plan.md'),'START This long paragraph must be **readable** from beginning to end, even with the largest *font*. Scroll through every line before advancing to the checkbox. Nothing after the pictures should disappear. END\n\n- [ ] After paragraph\n![[Assets/Wide.svg]]\n![[Assets/Tall.svg]]\n- [ ] After pictures');
+}
+if(process.env.WATCH_TEST_LINKS_ONLY){
+ fs.writeFileSync(path.join(vault,'Projects','Project plan.md'),'# Formatted note\n\nNormal **bold** and *italic* with [[Linked|Open friend]].\n\n> A short quote\n\n3. Numbered item\n\n- [ ] A task');
+ fs.writeFileSync(path.join(vault,'Projects','Linked.md'),'A linked note opened in Notesy.');
 }
 const {server,browser}=makeServer({vault,state:path.join(root,'state'),token:'fixture-token-'.repeat(4)});
-const projects=browser.list().items.find(n=>n.title==='Projects');const projectNote=browser.list(projects.id).items[0];browser.pin(projectNote.id,true);
+const projects=browser.list().items.find(n=>n.title==='Projects');const projectNote=browser.list(projects.id).items.find(n=>n.title==='Project plan');browser.pin(projectNote.id,true);
 server.listen(0,'127.0.0.1',()=>process.stdout.write(JSON.stringify({port:server.address().port,vaultId:browser.vaultId,root:browser.root,projects:projects.id,note:projectNote.id})+'\n'));
 function close(){server.close(()=>{fs.rmSync(root,{recursive:true,force:true});process.exit(0);});}process.on('SIGTERM',close);process.on('SIGINT',close);

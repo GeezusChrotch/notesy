@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 — unreleased candidate
+
+- Select Obsidian wiki and inline Markdown note links; Back restores the previous note.
+- Render headings, bold, italic, strikethrough, lists, quotes and code on the watch.
+- Preserve task byte offsets, image positions, long-text scrolling and hidden-folder rules.
+- Requires a matching future Connector bundle; see docs/MARKDOWN_AND_LINKS.md.
+
 ## 1.2.0 — public beta
 
 - Touch and button paging in both directions, retaining the boundary entry.

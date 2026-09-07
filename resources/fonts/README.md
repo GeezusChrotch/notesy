@@ -21,3 +21,9 @@ already supplied as a static Regular file.
 
 All five are distributed under the SIL Open Font License. The corresponding license
 texts are preserved in `resources/fonts/licenses/`.
+
+Notesy also bundles Open Sans Italic at 18, 24, and 30 points on both platforms
+for Markdown emphasis. Source: `ofl/opensans/OpenSans-Italic[wdth,wght].ttf` at the
+same Google Fonts commit above, instantiated with FontTools at weight 400 and
+width 100. Its existing Open Sans OFL notice applies. The italic resource includes
+printable Latin-1 characters; other scripts depend on the watch's available glyphs.

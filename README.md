@@ -79,6 +79,10 @@ expand subfolders as needed, then Apply hidden folders. Hidden choices apply to 
 and search, including descendants; reopen Notesy or refresh its list afterward. Files are not
 moved. Pictures in hidden attachment folders can still appear in visible notes.
 
+The upcoming 1.3.0 candidate adds selectable note links and richer Markdown. See
+[note links and Markdown](docs/MARKDOWN_AND_LINKS.md) for behavior and supported syntax.
+It requires the matching future Connector bundle.
+
 Notes with Markdown tasks or embedded pictures open as a content menu. Long paragraphs scroll
 within their row before Up/Down moves to the next item; photo rows keep their position as images
 load. Select a checkbox to

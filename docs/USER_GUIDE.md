@@ -109,3 +109,8 @@ Open **Actions → Sort notes** for **Name (A–Z)**, **Date modified (newest fi
 **Actions → Return to top** goes to the first entry in the current folder or vault using the current sort. From an open note it returns to that browsing location; from search it returns to the folder. Assign **Return to top** or **Sort notes** to Select or any long press under **Shortcuts**. Up/Down single presses always navigate.
 
 Creation dates use the filesystem creation time supplied by macOS, which can change when files are copied or restored. If a creation time is unavailable, modified time is used. Hidden folders remain hidden. New browsing requires the matching 1.2.0 Notesy service in Organik Apps Pebble Connector; update the Connector before installing this watch build.
+
+## Upcoming: note links and Markdown (1.3.0 candidate)
+
+See [note links and Markdown](MARKDOWN_AND_LINKS.md) for selectable linked notes,
+Back navigation, formatting support and the matching-Connector requirement.

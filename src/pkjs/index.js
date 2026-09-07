@@ -232,7 +232,7 @@ Pebble.addEventListener('appmessage',function(event){
       if(seq!==activeRequest)return;if(e){error(e.message,seq);return;}
       if(value.rich){
         send({TYPE:12,REQUEST:seq,TITLE:value.title,PARENT_ID:value.parent,PINNED:value.pinned?1:0,REVISION:value.revision,PAGE:value.offset,TOTAL:value.total,COUNT:value.blocks.length});
-        value.blocks.forEach(function(b,i){send({TYPE:13,REQUEST:seq,INDEX:i,ITEM_ID:b.id,TEXT:b.text,ENTRY_KIND:b.kind==='task'?1:b.kind==='image'?2:0,CHECKED:b.checked?1:0});});
+        value.blocks.forEach(function(b,i){send({TYPE:13,REQUEST:seq,INDEX:i,ITEM_ID:b.kind==='link'?(b.target||'unavailable'):b.id,TEXT:b.kind==='link'&&!b.target?(b.error||'Linked note unavailable'):(b.markup||b.text),TITLE:b.text,FORMAT:b.format||0,ENTRY_KIND:b.kind==='task'?1:b.kind==='image'?2:b.kind==='link'?(b.target?3:4):0,CHECKED:b.checked?1:0});});
         send({TYPE:14,REQUEST:seq});return;
       }
       send({TYPE:4,REQUEST:seq,TITLE:value.title,TEXT:value.text,PAGE:value.page,COUNT:value.pages,PARENT_ID:value.parent||'',PINNED:value.pinned?1:0});
