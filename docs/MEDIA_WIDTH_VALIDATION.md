@@ -6,4 +6,4 @@ Photos, Excalidraw/SVG drawings and PDF pages share a reader path that now fills
 
 Package: `dist/Notesy-1.4.8.pbw`, SHA-256 `fd1ee0e465453ebb8e1538caf6277ab1ee16a92cdcf99e6a34c242bb1b4691d1`.
 
-Watch-only change; installed Connector 0.8.1 is compatible. Source bitmap detail is still limited by the bounded conversion/storage resolution. Physical visual acceptance and automatic serial installation are separate. No publication authorized.
+Watch-only change; installed Connector 0.8.1 is compatible. Source bitmap detail is still limited by the bounded conversion/storage resolution. The exact package installed successfully over LAN after Beepster in the coordinated serial handoff (installer exit 0, “App install succeeded”). Physical user acceptance remains pending. No publication authorized.
