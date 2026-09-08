@@ -1,4 +1,4 @@
-# Notesy 1.4.8 — public beta release preparation
+# Notesy 1.4.8 — published public beta
 
 Publication authorized by Josh through the coordinator on 2026-09-08. Public minimum Connector 0.8.1; the coordinator exclusively owns the Pebble dashboard.
 
@@ -6,7 +6,9 @@ Publication authorized by Josh through the coordinator on 2026-09-08. Public min
 - Exact installed PBW SHA-256 `fd1ee0e465453ebb8e1538caf6277ab1ee16a92cdcf99e6a34c242bb1b4691d1`.
 - 94 tests, both builds and isolated Emery media/scrolling checks passed. No rebuild during release preparation.
 - Exact package installed successfully; physical full-width media acceptance remains pending.
-- Publication and public download verification are pending; older entries are historical.
+- GitHub release published against `1806c1ac6a7ddd3ffd3f8581ec85f8ba8d7bf2ea` after confirming the public Connector 0.8.1 dependency. All five anonymous public downloads match prepared hashes.
+- Website returned HTTP 200 showing 1.4.8 and minimum Connector 0.8.1. See [publication verification](PUBLICATION_VERIFICATION_1.4.8.json).
+- Store publication is tracked by the coordinator; this thread did not edit the dashboard. Older entries are historical.
 
 See [release notes](RELEASE_NOTES_1.4.8.md) and [media validation](MEDIA_WIDTH_VALIDATION.md).
 
