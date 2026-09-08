@@ -39,5 +39,14 @@
     "url": "https://geezuschrotch.github.io/notesy/",
     "status": 200,
     "version": "1.4.8"
+  },
+  "store": {
+    "url": "https://apps.repebble.com/a9d4515681c34b5088993dc6",
+    "asset": "https://appstore-api.repebble.com/api/assets/pbw/a9d4515681c34b5088993dc6/1.4.8/cc30050b-5f42-44d6-ad6b-6617eb4cb564.pbw",
+    "sha256": "fd1ee0e465453ebb8e1538caf6277ab1ee16a92cdcf99e6a34c242bb1b4691d1",
+    "versionAndDescriptionVerified": true,
+    "downloadHashMatches": true,
+    "verifiedBy": "release coordinator",
+    "date": "2026-09-08"
   }
 }

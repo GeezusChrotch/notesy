@@ -8,7 +8,7 @@ Publication authorized by Josh through the coordinator on 2026-09-08. Public min
 - Exact package installed successfully; physical full-width media acceptance remains pending.
 - GitHub release published against `1806c1ac6a7ddd3ffd3f8581ec85f8ba8d7bf2ea` after confirming the public Connector 0.8.1 dependency. All five anonymous public downloads match prepared hashes.
 - Website returned HTTP 200 showing 1.4.8 and minimum Connector 0.8.1. See [publication verification](PUBLICATION_VERIFICATION_1.4.8.json).
-- Store publication is tracked by the coordinator; this thread did not edit the dashboard. Older entries are historical.
+- The coordinator published the Pebble Store release and verified its live version, description and downloaded PBW against the same frozen hash on 2026-09-08. This thread did not edit the dashboard. Older entries are historical.
 
 See [release notes](RELEASE_NOTES_1.4.8.md) and [media validation](MEDIA_WIDTH_VALIDATION.md).
 
