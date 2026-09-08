@@ -1,3 +1,17 @@
+# Notesy 1.4.8 — public beta release preparation
+
+Publication authorized by Josh through the coordinator on 2026-09-08. Public minimum Connector 0.8.1; the coordinator exclusively owns the Pebble dashboard.
+
+- Runtime source `ac26636ffafeba7ffb47bbda246ba0912d338fbf`; no newer runtime changes.
+- Exact installed PBW SHA-256 `fd1ee0e465453ebb8e1538caf6277ab1ee16a92cdcf99e6a34c242bb1b4691d1`.
+- 94 tests, both builds and isolated Emery media/scrolling checks passed. No rebuild during release preparation.
+- Exact package installed successfully; physical full-width media acceptance remains pending.
+- Publication and public download verification are pending; older entries are historical.
+
+See [release notes](RELEASE_NOTES_1.4.8.md) and [media validation](MEDIA_WIDTH_VALIDATION.md).
+
+---
+
 # Notesy 1.4.7 — published public beta
 
 Publication authorized after Josh reported “Working great” for the installed task-text fix. Requires matching public Organik Apps Pebble Connector 0.8.1 or later. The coordinator exclusively owns the Pebble dashboard.

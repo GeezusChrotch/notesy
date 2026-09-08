@@ -6,20 +6,20 @@
 
 [Install](docs/INSTALL.md) · [User guide](docs/USER_GUIDE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Privacy](PRIVACY.md) · [Release preparation](RELEASING.md)
 
-Notesy 1.4.7 is released alongside
+Notesy 1.4.8 is released alongside
 [Organik Apps Pebble Connector](https://github.com/GeezusChrotch/organik-pebble-connector).
 [Install from the Pebble store](https://apps.repebble.com/a9d4515681c34b5088993dc6) or
-[download the 1.4.7 public beta](https://github.com/GeezusChrotch/notesy/releases/tag/v1.4.7).
+[download the 1.4.8 public beta](https://github.com/GeezusChrotch/notesy/releases/tag/v1.4.8).
 See [release status](docs/RELEASE_STATUS.md) for validation details.
 
-Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.4.7 · public beta.
+Browse an Obsidian vault, read notes and capture dictation on Pebble Time and Time 2. Version 1.4.8 · public beta.
 Choose the vault in **Organik Apps Pebble Connector**. No Obsidian plugin or dedicated notes folder
 is required. Ordinary Markdown notes created in Obsidian appear alongside watch-created notes.
 No personal vault, account, network address or credential is embedded in the shared app.
 
 ## PDF and image previews
 
-Open and pin PDFs from the vault browser, or scroll through numbered pages embedded in notes. Obsidian `#page=3` embeds show that page. Choose Natural, High contrast or Original under phone settings → Themes → Photos and drawings. PDF and Excalidraw previews use the clean-line treatment. Whole-page PDF previews are read-only and have no zoom; fine print may be too small. Limits: 20 MB and 1,000 pages per PDF.
+Open and pin PDFs from the vault browser, or scroll through numbered pages embedded in notes. Obsidian `#page=3` embeds show that page. Choose Natural, High contrast or Original under phone settings → Themes → Photos and drawings. PDF and Excalidraw previews use the clean-line treatment. Photos, drawings and PDF pages fill the reader width while preserving proportions; portrait previews scroll vertically. Whole-page PDF previews are read-only and have no zoom; fine print may be too small. Limits: 20 MB and 1,000 pages per PDF.
 
 ## Watch controls
 
@@ -40,7 +40,7 @@ for each view**: normal navigation, Quick Dictate or Stitch for a new note or ap
 Double-pressing Back always opens Actions.
 There are no Back or Next/Previous page menu entries.
 
-The main page shows pins first, then folders, then root notes. In 1.4.7, Actions → Sort notes and phone Vault settings offer name, modified date, created date or scoped tag browsing. Return to top is available in Actions and as a configurable shortcut. See [browsing and sorting](docs/USER_GUIDE.md#browsing-sorting-and-returning-to-the-top-120); install the matching Connector service before this watch build.
+The main page shows pins first, then folders, then root notes. In 1.4.8, Actions → Sort notes and phone Vault settings offer name, modified date, created date or scoped tag browsing. Return to top is available in Actions and as a configurable shortcut. See [browsing and sorting](docs/USER_GUIDE.md#browsing-sorting-and-returning-to-the-top-120); install the matching Connector service before this watch build.
 Nested folders open with Select. Lists keep 15 entries on the watch; moving beyond either edge
 loads the adjacent batch automatically. Folder listings are stable while paging, even if files
 change in Obsidian. Use Refresh in Actions to see changes; listings expire after 30 minutes.
@@ -83,7 +83,7 @@ expand subfolders as needed, then Apply hidden folders. Hidden choices apply to 
 and search, including descendants; reopen Notesy or refresh its list afterward. Files are not
 moved. Pictures in hidden attachment folders can still appear in visible notes.
 
-Notesy 1.4.7 includes selectable note links and richer Markdown. See
+Notesy 1.4.8 includes selectable note links and richer Markdown. See
 [note links and Markdown](docs/MARKDOWN_AND_LINKS.md) for behavior and supported syntax.
 Requires Organik Apps Pebble Connector 0.8.1 or later.
 
@@ -104,7 +104,7 @@ on your Mac. Source drawings are never rewritten; use New note alongside a drawi
 
 Choose your vault in the Mac connector, start Notesy, start its private connection, and select
 Connect phone. Scan the one-time QR code. On the phone, copy the pairing details into
-Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-1.4.7.pbw` on the watch.
+Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-1.4.8.pbw` on the watch.
 The connector requires macOS 14+ and bundles its runtime. Keep Tailscale connected on both devices.
 
 For an existing Notesy installation, update both the connector and watch app, then reopen
@@ -163,7 +163,7 @@ API remains compatible with old queued notes. The Mac build bundles the server m
 Renderer versions and dependency overrides are pinned in renderer/package-lock.json. The renderer
 blocks HTTP(S) requests and only receives the selected local image or drawing.
 
-Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-1.4.7.pbw` for distribution; the latter
+Use `build/StoneNotes.pbw` for debugging and `dist/Notesy-1.4.8.pbw` for distribution; the latter
 omits SDK source maps. `tests/watch-emulator.py` exercises the compiled C app against the disposable
 vault in `tests/emulator-fixture.js`; it requires a fixture PBW with inert phone JS, never a physical
 watch. Phone transport and settings have separate automated tests. See `PRIVACY.md` for data handling.
@@ -183,13 +183,13 @@ WATCH_TEST_RICH_ONLY=1 python tests/watch-emulator.py
 
 Use only the emulator fixture for those commands. The dictation check supplies simulated
 transcripts through the SDK voice protocol; it does not verify a real microphone or phone speech
-service. Normal watch installations must use `dist/Notesy-1.4.7.pbw`.
+service. Normal watch installations must use `dist/Notesy-1.4.8.pbw`.
 
 Notesy was previously named StoneNotes. Its watch UUID, saved settings, queues, pins and pairing remain compatible. Internal storage keys and the wire service ID keep their original names; existing notes are not renamed or rewritten.
 
 ## Beta testing status
 
-The release passes automated tests and Basalt/Emery builds. Native and earlier emulator checks cover scrolling, links, tasks, formatting, Double Back and menu startup. This exact 1.4.7 package was installed successfully and the task-text fix received positive watch feedback. Broader PDF/image visual acceptance remains pending. Fresh Mac/phone setup and end-to-end hardware acceptance remain pending. See [release status](docs/RELEASE_STATUS.md).
+The release passes automated tests and Basalt/Emery builds. Native and earlier emulator checks cover scrolling, links, tasks, formatting, Double Back and menu startup. This exact 1.4.8 package was installed successfully. The earlier task-text fix received positive watch feedback; physical acceptance of full-width media remains pending. Broader PDF/image visual acceptance remains pending. Fresh Mac/phone setup and end-to-end hardware acceptance remain pending. See [release status](docs/RELEASE_STATUS.md).
 
 ## Thank you
 

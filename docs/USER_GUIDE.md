@@ -129,3 +129,7 @@ Save and reopen a note to reload its previews with the selected mode. The conver
 PDF files appear alongside notes in the vault browser and can be pinned or opened from a note link. Embedded PDFs such as `![[Guide.pdf]]` display their pages inline; `![[Guide.pdf#page=3]]` displays that page only. Each preview is labeled with its page number and total. Scroll normally in either direction: Notesy loads previews as pages come into view, including beyond the first set of 15 content items.
 
 These are whole-page previews, with no zoom or text selection. Fine print may be too small to read on the watch. Natural, High contrast and Original also apply to PDFs, using the clean-line drawing treatment. PDFs are read-only: dictate into a separate note, and remove PDF attachments in Obsidian. Limits are 20 MB and 1,000 pages per PDF; locked or damaged PDFs show an explanation. Connector 0.8.0 or later is required.
+
+## Full-width media (1.4.8)
+
+Photos, drawings and PDF pages use the available reader width while retaining their proportions. Portrait previews become taller and scroll with the note. Source resolution remains bounded for watch memory; enlarging a preview does not add detail. Extremely tall, narrow previews retain their proportions within the watch layout limit.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.8 — full-width media
+
+Display photos, drawings and PDF pages at the reader width while preserving proportions. Portrait media scrolls vertically; bounded bitmap storage and offscreen clipping keep memory and drawing work controlled. Includes the accepted task-text fix from 1.4.7. Requires Connector 0.8.1+. See [release notes](docs/RELEASE_NOTES_1.4.8.md).
+
 ## 1.4.7 — complete task text
 
 Measure checkbox rows with the selected theme font, preserve long UTF-8 task text through scrolling continuations, and relayout when themes change. One checkbox still controls the original task. Requires Connector 0.8.1+. The installed fix was accepted on the watch. See [release notes](docs/RELEASE_NOTES_1.4.7.md).
