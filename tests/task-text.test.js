@@ -22,7 +22,7 @@ test('task row measures the selected font at checkbox text width and keeps every
 typedef struct {int x,y;} GPoint;typedef struct {int w,h;} GSize;typedef struct {GPoint origin;GSize size;} GRect;
 #define GRect(x,y,w,h) ((GRect){{x,y},{w,h}})
 typedef struct {int width;} Layer;typedef struct {int section,row;} MenuIndex;typedef int GFont;
-typedef struct {char text[241];int kind,text_height;} RichItem;
+typedef struct {char text[241];int kind,text_height,media_width,media_height;} RichItem;
 static RichItem s_rich_items[1];static int s_rich_count=1,s_theme_size,measurements,last_width,last_font;
 #define IMAGE_HEIGHT 150
 #define GTextOverflowModeWordWrap 1
@@ -34,6 +34,7 @@ static GSize graphics_text_layout_get_content_size(const char *text,GFont font,G
  int perline=bounds.size.w/(font/2),lines=((int)strlen(text)+perline-1)/perline;return (GSize){bounds.size.w,lines*(font+4)};
 }
 static int rich_text_height(Layer *layer,RichItem *item){return 42;}
+static GRect media_rect(int width,int w,int h){return GRect(0,26,width,150);}
 ${body}
 int main(void){
  MenuIndex index={0,0};s_rich_items[0].kind=1;memset(s_rich_items[0].text,'X',220);s_rich_items[0].text[220]=0;

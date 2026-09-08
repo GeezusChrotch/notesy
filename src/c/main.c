@@ -14,7 +14,7 @@ static Window *s_main, *s_reader, *s_actions;
 static MenuLayer *s_action_menu;
 static ScrollLayer *s_document_scroll;
 static Layer *s_document_view,*s_document_cells[15];
-typedef struct {char text[241],id[65];uint8_t kind,format;bool checked;uint16_t text_height;} RichItem;
+typedef struct {char text[241],id[65];uint8_t kind,format;bool checked;uint16_t text_height,media_width,media_height;} RichItem;
 static RichItem s_rich_items[15];
 static int s_rich_active=-1;static bool s_rich_animate;
 static bool s_rich,s_image_loading;static int s_rich_count,s_rich_expected,s_rich_offset,s_rich_total,s_rich_restore,s_rich_scroll;
@@ -549,6 +549,7 @@ static void open_actions(ClickRecognizerRef recognizer,void *context){
 static void show_capture_choices(void){open_actions(NULL,NULL);s_capture_choices=true;if(s_action_menu){menu_layer_reload_data(s_action_menu);actions_top();}}
 static void image_clear(void){if(s_image){gbitmap_destroy(s_image);s_image=NULL;}s_image_loading=false;s_image_index=-1;s_image_error[0]=0;}
 #include "markdown.h"
+#include "media.h"
 static int rich_text_height(Layer *menu,RichItem *item){
   if(item->text_height)return item->text_height;
   int width=layer_get_bounds(menu).size.w-12;
@@ -564,8 +565,8 @@ static int16_t rich_height(Layer *menu,MenuIndex *index,void *context){
     return item->text_height;
   }
   if(item->kind==3||item->kind==4)return s_theme_size+40;
-  // Keep geometry stable while a preview loads, fails, or is evicted for another image.
-  if(item->kind==2)return IMAGE_HEIGHT+34;
+  // Retain learned source geometry when another preview replaces the bitmap.
+  if(item->kind==2)return media_rect(layer_get_bounds(menu).size.w,item->media_width,item->media_height).size.h+34;
   return rich_text_height(menu,item);
 }
 static void rich_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *context){
@@ -582,7 +583,7 @@ static void rich_draw(GContext *ctx,const Layer *cell,MenuIndex *index,void *con
     if(item->checked){graphics_draw_line(ctx,GPoint(9,20),GPoint(13,24));graphics_draw_line(ctx,GPoint(13,24),GPoint(20,15));}
   }else if(item->kind==2){
     graphics_draw_text(ctx,item->text,fonts_get_system_font(FONT_KEY_GOTHIC_14),GRect(6,0,bounds.size.w-12,22),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
-    if(s_image_index==s_rich_offset+index->row&&s_image&&!s_image_loading){GRect image=gbitmap_get_bounds(s_image);graphics_draw_bitmap_in_rect(ctx,s_image,GRect((bounds.size.w-image.size.w)/2,26,image.size.w,image.size.h));}
+    if(s_image_index==s_rich_offset+index->row&&s_image&&!s_image_loading){GPoint origin=layer_convert_point_to_screen(cell,GPointZero);media_draw(ctx,s_image,media_rect(bounds.size.w,item->media_width,item->media_height),origin.y,layer_get_bounds(window_get_root_layer(s_reader)).size.h);}
     else graphics_draw_text(ctx,s_image_index==s_rich_offset+index->row?(s_image_error[0]?s_image_error:"Loading image…"):"Image loads as you scroll",fonts_get_system_font(FONT_KEY_GOTHIC_18),GRect(6,34,bounds.size.w-12,bounds.size.h-38),GTextOverflowModeWordWrap,GTextAlignmentLeft,NULL);
   }else if(item->kind==3||item->kind==4){
     graphics_draw_text(ctx,item->text,theme_title_font(),GRect(6,0,bounds.size.w-12,s_theme_size+10),GTextOverflowModeTrailingEllipsis,GTextAlignmentLeft,NULL);
@@ -878,6 +879,11 @@ static void inbox(DictionaryIterator *iter, void *context) {
   } else if(kind==16&&s_rich&&s_image_loading){
     Tuple *width=dict_find(iter,MESSAGE_KEY_WIDTH),*height=dict_find(iter,MESSAGE_KEY_HEIGHT),*total=dict_find(iter,MESSAGE_KEY_TOTAL);int w=width?width->value->int32:0,h=height?height->value->int32:0;
     if(w<1||w>IMAGE_WIDTH||h<1||h>IMAGE_HEIGHT){image_clear();set_status("Invalid image size");return;}s_image_source_width=w;s_image_source_height=h;
+    int row=s_image_index-s_rich_offset;
+    if(row>=0&&row<s_rich_count){
+      s_rich_items[row].media_width=w;s_rich_items[row].media_height=h;document_reload();
+      int max=rich_scroll_max();if(s_rich_scroll>max){s_rich_scroll=max;scroll_layer_set_content_offset(s_document_scroll,GPoint(0,-max),false);}
+    }
 #if !defined(PBL_PLATFORM_EMERY)
     // Downsample during RLE decoding to leave room for document layers on 64 KB watches.
     if(w>104){w=104;}if(h>80){h=80;}
