@@ -11,7 +11,7 @@ service. Your phone's dictation provider and any optional third-party services h
 ## Connect the Mac
 
 1. Install **Organik Apps Pebble Connector 0.8.1 or later** from its
-   [release page](https://github.com/GeezusChrotch/organik-pebble-connector/releases/tag/v0.8.1).
+   [release page](https://github.com/GeezusChrotch/organik-pebble-connector/releases/latest).
    Drag the app into Applications and open it.
 2. Install [Tailscale](https://tailscale.com/download) on the Mac and phone. Sign both into the
    same private network and leave Tailscale connected.
@@ -20,7 +20,7 @@ service. Your phone's dictation provider and any optional third-party services h
 4. Choose **Connect phone**. Scan the one-time QR code on your phone and copy the pairing details
    from the private page. If the page expires, request a new code on the Mac.
 
-A closed connector window is fine. Keep the app running and the Mac awake. **Settings → Start at
+An always-on, awake Mac running the Connector is required for reading and delivery. A closed connector window is fine. **Settings → Start at
 login** makes reopening the connector after a Mac restart easier. Each app keeps separate pairing;
 your Notesy credential does not grant access to the other connectors.
 
@@ -51,4 +51,4 @@ Pebble or clear its data while notes are queued. Existing Markdown files are not
 You can hide folders in phone settings without moving files. No dedicated Pebble or Notesy folder
 is required. Notes you create directly in Obsidian appear on the watch after refreshing the list.
 
-Notesy 1.2.0 requires Organik Apps Pebble Connector 0.5.0 or later. Update the Mac Connector before updating the watch app. Existing pairing and vault settings are retained.
+Notesy 1.4.8 requires Organik Apps Pebble Connector 0.8.1 or later. Update the Mac Connector before updating the watch app. Existing pairing and vault settings are retained.

@@ -102,6 +102,8 @@ on your Mac. Source drawings are never rewritten; use New note alongside a drawi
 
 ## Setup and upgrades
 
+Download [Organik Apps Pebble Connector](https://github.com/GeezusChrotch/organik-pebble-connector/releases/latest). Keep an always-on Mac awake with the Connector running for reading and delivery.
+
 Choose your vault in the Mac connector, start Notesy, start its private connection, and select
 Connect phone. Scan the one-time QR code. On the phone, copy the pairing details into
 Pebble → Notesy → Settings, test, and save. Install `dist/Notesy-1.4.8.pbw` on the watch.

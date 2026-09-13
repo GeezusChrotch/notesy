@@ -1,6 +1,6 @@
 # Notesy — Pebble Appstore submission
 
-Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — existing listing; 1.4.8 update prepared for the release coordinator.
+Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — existing listing; version 1.4.8 is public.
 
 - Name: Notesy
 - Developer: Organik Apps
