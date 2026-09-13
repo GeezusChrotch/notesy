@@ -20,18 +20,17 @@ Published: https://apps.repebble.com/a9d4515681c34b5088993dc6 — existing listi
 
 Your Obsidian vault, on your wrist. Free, MIT open source, public beta.
 
-Dictate new notes or append to existing ones. Quick Dictate captures one 15-second recording; Stitch joins sections into a longer note. Speak a search term to find likely notes.
+Dictate new notes or append to existing ones. Quick Dictate captures a 15-second recording; Stitch joins sections into longer notes. Speak a search term to find likely notes.
 
-Browse folders and root notes, loading more as you scroll in either direction. Sort by name, modified date, created date or folder-scoped tag. Return to top jumps to the first entry.
+Browse folders and notes, sort by name/date/tag, pin favorites and hide folders. Read complete task text, check tasks and open linked notes. Local photos, Excalidraw drawings and PDF pages fill the reader width with correct proportions. PDFs are read-only without zoom; limits are 20 MB and 1,000 pages.
 
-Scroll notes naturally, open linked notes, read complete task text, check tasks, and view local pictures and Excalidraw drawings. Browse and pin PDFs or scroll their numbered pages inline. Media fills the reader width with correct proportions. PDF previews are read-only, with no zoom; fine print may be small. Limits: 20 MB and 1,000 pages per PDF.
+Choose Natural, High contrast or Original image processing. Customize themes, fonts, colors, Select, long presses and Double Back. Up and Down always navigate. Touch uses tap to highlight, then tap again to open.
 
-Choose Natural, High contrast or Original processing for photos, drawings and PDFs. Pin favorites and hide folders. Tap to highlight and read a scrolling title; tap again to open.
+REQUIRED MAC DOWNLOAD:
+https://github.com/GeezusChrotch/organik-pebble-connector/releases/latest
 
-Customize themes, fonts, colors, marquee speed, Select, long presses and Double Back in phone settings. Up and Down always navigate.
+Requires macOS 14+ and compatible Organik Apps Connector 0.8.1+. Keep an always-on Mac awake, online and running Connector. Select your local Obsidian vault in Connector. Install and connect Tailscale on BOTH the Mac and paired phone in the same private network for access at home or away. Sleeping/offline Macs cannot sync. iPhone is the tested setup.
 
-Requires macOS 14+, Organik Apps Pebble Connector 0.8.1+, and Tailscale on Mac and phone. Keep the Connector running on an awake Mac. iPhone is the tested setup. No Obsidian plugin, subscription, Notesy account or analytics.
+No Obsidian plugin, subscription, Notesy account or analytics. Local attachments use your private connection. Web links may be fetched for page titles; remote images and full plugin layouts are unsupported.
 
-Local attachments use your private connection; remote web images and full plugin layouts aren't supported.
-
-Setup: https://github.com/GeezusChrotch/notesy
+Setup and privacy: https://github.com/GeezusChrotch/notesy
