@@ -30,8 +30,8 @@ Choose Natural, High contrast or Original processing for photos, drawings and PD
 
 Customize themes, fonts, colors, marquee speed, Select, long presses and Double Back in phone settings. Up and Down always navigate.
 
-Requires macOS 14+, Organik Apps Pebble Connector 0.8.1+, and Tailscale on Mac and phone. Keep the Mac awake. iPhone is the tested setup. No Obsidian plugin, subscription, Notesy account or analytics.
+Requires macOS 14+, Organik Apps Pebble Connector 0.8.1+, and Tailscale on Mac and phone. Keep the Connector running on an awake Mac. iPhone is the tested setup. No Obsidian plugin, subscription, Notesy account or analytics.
 
-Local attachments use your private connection; remote web images and full plugin layouts aren't supported. The update is installed; full-width media acceptance and fresh setup testing remain pending.
+Local attachments use your private connection; remote web images and full plugin layouts aren't supported.
 
 Setup: https://github.com/GeezusChrotch/notesy

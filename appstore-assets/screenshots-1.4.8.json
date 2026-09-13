@@ -1,0 +1,14 @@
+{
+  "version": "1.4.8",
+  "pbwSha256": "fd1ee0e465453ebb8e1538caf6277ab1ee16a92cdcf99e6a34c242bb1b4691d1",
+  "synthetic": true,
+  "dimensions": [
+    200,
+    228
+  ],
+  "files": {
+    "notesy-drawing-emery.png": "94fa9a34d570c01d562747f9632d892206f48e052c87ffb380fd5a82825c2075",
+    "notesy-browse-emery.png": "3033da24cfe33ab5ed05a773449342576801caf1735dc8678374a53c7c7cd6c0",
+    "notesy-tasks-emery.png": "58bccf6db777cf8f7f87c54127a6783d34d95097d27bc69c107b910f7d654580"
+  }
+}

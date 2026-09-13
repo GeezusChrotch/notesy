@@ -15,3 +15,15 @@ Organik Apps releases its code, documentation and artwork under the repository's
 Screenshots in this directory use disposable fictional notes, never a user's vault. Store asset
 sizes should be checked against the submission form when publishing; these match the existing
 Organik Apps Pebble store asset convention.
+
+## Current screenshots — Notesy 1.4.8
+
+The three Emery screenshots were refreshed from the exact public 1.4.8 watch package
+(SHA-256 `fd1ee0e465453ebb8e1538caf6277ab1ee16a92cdcf99e6a34c242bb1b4691d1`).
+They show fictional Weekend plans, folders, checkboxes, a linked note and a Sketchbook drawing.
+The drawing was rendered by Notesy's Excalidraw helper and shared Natural image processor,
+then delivered to the unchanged watch app. No private vault or phone connection was used.
+
+Capture uses Pebble's native screenshot API with color correction disabled, at the original
+200 × 228 resolution. QEMU display screendumps introduce a gray cast and are not used here.
+Screenshots demonstrate app rendering; they do not replace physical-watch acceptance.
